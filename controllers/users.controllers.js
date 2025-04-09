@@ -14,12 +14,12 @@ const createUser = async (req, res) => {
         if (user) {
             return res.status(400).json({ message: "User already exists." });
         }
-        if (accessCode != process.env.ACCESS_CODE) {
+        /*if (accessCode != process.env.ACCESS_CODE) {
             return res.status(401).json({
                 message:
                     "Doesn't match the access code in the Digital Fabrication Lab.",
             });
-        }
+        }*/
         user = new User({
             firstName,
             lastName,

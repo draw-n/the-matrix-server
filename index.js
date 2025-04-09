@@ -12,41 +12,14 @@ const PORT = process.env.PORT || 3001;
 const app = express();
 require("./config/passport.js");
 
-app.use(
-    cors({
-        origin: process.env.FRONT_END_ORIGIN,
-        credentials: true,
-    })
-);
+app.use(cors());
 
-//configuration for passport
-app.use(
-    session({
-        secret: process.env.SESSION_KEY,
-        resave: false,
-        saveUninitialized: false,
-        cookie: { secure: true },
-        maxAge: null,
-    })
-); //session secret
 app.use(passport.initialize());
 app.use(passport.session()); //persistent login session
 app.use(express.json());
 
 connectDB();
 
-/*const allowedOrigins = ["https://localhost", "https://df-updates.vercel.app"];
-
-const corsOptions = {
-    origin: (origin, callback) => {
-        if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
-            callback(null, true); // Allow the origin
-        } else {
-            callback(new Error("Not allowed by CORS")); // Reject the origin
-        }
-    },
-    optionsSuccessStatus: 200, // For legacy browser support
-};*/
 
 var storage = multer.diskStorage({
     // destination: function (req, file, cb) { //keep hidden in production for now, don't want files constantly getting stored lol
@@ -84,7 +57,8 @@ app.use("/materials", require("./routes/materials.router.js"));
 app.use("/categories", require("./routes/categories.router.js"));
 
 app.get("/", (req, res) => {
-    res.send("Ello :D");
+    res.send(process.env.ATLAS_URI);
+
 });
 
 app.listen(PORT, () => {
