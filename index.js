@@ -12,15 +12,22 @@ const PORT = process.env.PORT || 3001;
 const app = express();
 require("./config/passport.js");
 
-app.use(cors());
+app.use(
+    cors({
+        origin: process.env.FRONT_END_ORIGIN,
+        credentials: true,
+    })
+);
 
 app.use(
     session({
-      secret: 'your-secret-key', // Make sure to use a secure secret key in production
-      resave: false,  // Don't save session if unmodified
-      saveUninitialized: false,  // Don't create a session until something is stored
+        secret: "idk",
+        resave: false,
+        saveUninitialized: false,
+        cookie: { secure: true },
+        maxAge: null,
     })
-  );
+);
 
 app.use(passport.initialize());
 app.use(passport.session()); //persistent login session
