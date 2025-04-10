@@ -14,6 +14,14 @@ require("./config/passport.js");
 
 app.use(cors());
 
+app.use(
+    session({
+      secret: 'your-secret-key', // Make sure to use a secure secret key in production
+      resave: false,  // Don't save session if unmodified
+      saveUninitialized: false,  // Don't create a session until something is stored
+    })
+  );
+
 app.use(passport.initialize());
 app.use(passport.session()); //persistent login session
 app.use(express.json());
