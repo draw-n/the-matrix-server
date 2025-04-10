@@ -10,16 +10,16 @@ const createUser = async (req, res) => {
     const { firstName, lastName, email, password, accessCode } = req.body;
 
     try {
-        let user = await User.findOne({ email: new RegExp(email, "i") });
+        /*let user = await User.findOne({ email: new RegExp(email, "i") });
         if (user) {
             return res.status(400).json({ message: "User already exists." });
-        }
-        /*if (accessCode != process.env.ACCESS_CODE) {
+        }*/
+        if (accessCode != process.env.ACCESS_CODE) {
             return res.status(401).json({
                 message:
                     "Doesn't match the access code in the Digital Fabrication Lab.",
             });
-        }*/
+        }
         user = new User({
             firstName,
             lastName,
