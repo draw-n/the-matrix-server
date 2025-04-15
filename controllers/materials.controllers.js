@@ -164,7 +164,9 @@ const getAllMaterials = async (req, res) => {
             }
         }
 
-        const material = await Material.find(filter);
+        const material = await Material.find(filter).sort(
+            (a, b) => a.category - b.category
+        );
         return res.status(200).json(material);
     } catch (err) {
         console.error(err.message);

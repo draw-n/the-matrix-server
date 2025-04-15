@@ -1,5 +1,5 @@
 const User = require("../models/User.js");
-const Access = require("../models/Access.js")
+const Access = require("../models/Access.js");
 /**
  * Creates a new user, likely at sign in
  * @param {*} req - request details
@@ -20,10 +20,14 @@ const createUser = async (req, res) => {
         if (accessCode == process.env.ACCESS_CODE) {
             access = "admin";
         } else {
-            const accessResult = await Access.findOne({accessCode: accessCode});
+            const accessResult = await Access.findOne({
+                accessCode: accessCode,
+            });
 
             if (!accessResult) {
-                return res.status(400).send({message: "Access code incorrect."})
+                return res
+                    .status(400)
+                    .send({ message: "Access code incorrect." });
             }
 
             access = accessResult.role;
@@ -149,7 +153,9 @@ const getAllUsers = async (req, res) => {
         if (access) {
             filter.access = new RegExp(access, "i");
         }
-        const user = await User.find(filter);
+        const user = await User.find(filter).sort(
+            (a, b) => a.firstName - b.firstName
+        );
         return res.status(200).json(user);
     } catch (err) {
         return res.status(500).send({ message: err.message });
