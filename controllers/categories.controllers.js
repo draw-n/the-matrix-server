@@ -150,9 +150,7 @@ const getCategory = async (req, res) => {
  */
 const getAllCategories = async (req, res) => {
     try {
-        const categories = await Category.find().sort(
-            (a, b) => a.name - b.name
-        );
+        const categories = await Category.find().sort({ name: 1 });
         return res.status(200).json(categories);
     } catch (err) {
         console.error(err.message);

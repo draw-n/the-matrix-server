@@ -87,7 +87,10 @@ const editAnnouncement = async (req, res) => {
     const id = req.params?.id;
     try {
         if (id) {
-            const announcement = await Announcement.findByIdAndUpdate(id, req.body);
+            const announcement = await Announcement.findByIdAndUpdate(
+                id,
+                req.body
+            );
 
             if (!announcement) {
                 return res
@@ -97,7 +100,9 @@ const editAnnouncement = async (req, res) => {
 
             return res.status(200).json(announcement);
         } else {
-            return res.status(400).send({ message: "Missing Announcement ID." });
+            return res
+                .status(400)
+                .send({ message: "Missing Announcement ID." });
         }
     } catch (err) {
         console.error(err.message);
@@ -169,7 +174,7 @@ const getAllAnnouncements = async (req, res) => {
             filter.createdBy = new RegExp(createdBy, "i");
         }
 
-        const announcements = await Announcement.find(filter);
+        const announcements = await Announcement.find(filter).sort({ date: 1 });
         return res.status(200).json(announcements);
     } catch (err) {
         console.error(err.message);

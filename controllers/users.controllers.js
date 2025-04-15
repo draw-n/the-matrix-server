@@ -153,9 +153,7 @@ const getAllUsers = async (req, res) => {
         if (access) {
             filter.access = new RegExp(access, "i");
         }
-        const user = await User.find(filter).sort(
-            (a, b) => a.firstName - b.firstName
-        );
+        const user = await User.find(filter).sort({ firstName: 1 });
         return res.status(200).json(user);
     } catch (err) {
         return res.status(500).send({ message: err.message });

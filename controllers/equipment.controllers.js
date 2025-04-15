@@ -150,7 +150,7 @@ const getAllEquipment = async (req, res) => {
                 filter.category = category; // It's a string, use it as is
             }
         }
-        const equipments = await Equipment.find(filter).sort((a, b) => a.name - b.name);
+        const equipments = await Equipment.find(filter).sort({name: 1});
         return res.status(200).json(equipments);
     } catch (err) {
         console.error(err.message);

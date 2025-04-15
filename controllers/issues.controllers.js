@@ -152,9 +152,7 @@ const getAllIssues = async (req, res) => {
             };
         }
 
-        const issue = await Issue.find(filter).sort(
-            (a, b) => a.equipment - b.equipment
-        );
+        const issue = await Issue.find(filter).sort({ equipment: 1 });
         return res.status(200).json(issue);
     } catch (err) {
         console.error(err.message);
