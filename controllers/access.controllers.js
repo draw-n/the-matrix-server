@@ -76,7 +76,7 @@ const editAccess = async (req, res) => {
     const role = req.params?.role;
     try {
         if (role) {
-            const access = await Access.findByIdAndUpdate(role, req.body);
+            const access = await Access.findOneAndUpdate({ role }, req.body);
 
             if (!access) {
                 return res.status(404).send({ message: "Access not found." });
