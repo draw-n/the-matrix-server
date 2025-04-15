@@ -14,6 +14,6 @@ router.post("/", createAccess);
 router.put("/:role", editAccess);
 router.get("/:role", getAccess);
 router.get("/", getAllAccesses);
-router.delete("/:id", deleteAccess);
+router.delete("/:role", deleteAccess);
 
 module.exports = router;

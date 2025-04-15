@@ -18,6 +18,6 @@ const AccessSchema = new Schema({
 });
 
 module.exports = Access = mongoose.model(
-    "access",
+    "accesses",
     AccessSchema
 );

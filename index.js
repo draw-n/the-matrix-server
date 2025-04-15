@@ -67,7 +67,7 @@ app.use("/users", require("./routes/users.router.js"));
 app.use("/equipment", require("./routes/equipment.router.js"));
 app.use("/materials", require("./routes/materials.router.js"));
 app.use("/categories", require("./routes/categories.router.js"));
-app.use("/access", require("./routes/access.router.js"));
+app.use("/accesses", require("./routes/access.router.js"));
 
 app.get("/", (req, res) => {
     res.send(process.env.ATLAS_URI);
