@@ -1,5 +1,5 @@
 const User = require("../models/User.js");
-
+const Access = require("../models/Access.js")
 /**
  * Creates a new user, likely at sign in
  * @param {*} req - request details
@@ -10,22 +10,30 @@ const createUser = async (req, res) => {
     const { firstName, lastName, email, password, accessCode } = req.body;
 
     try {
-        /*let user = await User.findOne({ email: new RegExp(email, "i") });
+        let user = await User.findOne({ email: new RegExp(email, "i") });
         if (user) {
             return res.status(400).json({ message: "User already exists." });
-        }*/
-        if (accessCode != process.env.ACCESS_CODE) {
-            return res.status(401).json({
-                message:
-                    "Doesn't match the access code in the Digital Fabrication Lab.",
-            });
+        }
+
+        let access = "novice";
+
+        if (accessCode == process.env.ACCESS_CODE) {
+            access = "admin";
+        } else {
+            const accessResult = await Access.findOne({accessCode: accessCode});
+
+            if (!accessResult) {
+                return res.status(400).send({message: "Access code incorrect."})
+            }
+
+            access = accessResult.role;
         }
         user = new User({
             firstName,
             lastName,
             email: email.toLowerCase(),
             password,
-            access: "novice",
+            access,
         });
 
         await user.save();
