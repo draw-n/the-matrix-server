@@ -20,7 +20,6 @@ const createIssue = async (req, res) => {
                 description,
                 createdBy,
                 dateCreated,
-                assignedTo: "",
             });
             await issue.save();
             return res.status(200).json(issue);

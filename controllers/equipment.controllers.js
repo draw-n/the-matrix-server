@@ -1,5 +1,6 @@
 const Equipment = require("../models/Equipment.js");
-const Issue = require("../models/Issue.js")
+const Issue = require("../models/Issue.js");
+var axios = require("axios");
 var mongoose = require("mongoose");
 const { ObjectId } = mongoose.Types; // Import ObjectId
 
@@ -52,10 +53,11 @@ const deleteEquipment = async (req, res) => {
         if (id) {
             const equipment = await Equipment.findByIdAndDelete(id);
             if (!equipment) {
-                return res.status(404).send({message: "Equipment not found."});
-
+                return res
+                    .status(404)
+                    .send({ message: "Equipment not found." });
             }
-            const issues = await Issue.deleteMany({equipment: id})
+            const issues = await Issue.deleteMany({ equipment: id });
             return res
                 .status(200)
                 .send({ message: "Successfully deleted equipment." });
@@ -90,6 +92,76 @@ const editEquipment = async (req, res) => {
                     .json({ message: "Equipment not found." });
             }
 
+            return res.status(200).json(equipment);
+        } else {
+            return res.status(400).send({ message: "Missing Equipment ID." });
+        }
+    } catch (err) {
+        console.error(err.message);
+        return res.status(500).send({
+            message: "Error when updating equipment.",
+            error: err.message,
+        });
+    }
+};
+
+/**
+ * Update equipment status based on retrieval
+ * @param {*} req - request object
+ * @param {*} res - response object
+ * @returns - response object (with status)
+ */
+const updateStatus = async (req, res) => {
+    const id = req.params?.id;
+
+    try {
+        if (id) {
+            let equipment = await Equipment.findById(id);
+            if (!equipment) {
+                return res
+                    .status(404)
+                    .json({ message: "Equipment not found." });
+            }
+
+            if (equipment.ipUrl) {
+                await axios.get(`http://${equipment.ipUrl}/rr_connect?password=`);
+                const statusResponse = await axios.get(
+                    `http://${equipment.ipUrl}/rr_model?key=state.status`
+                );
+                const result = statusResponse.data.result;
+                let finalStatus = "offline";
+
+                switch (result) {
+                    case "disconnected":
+                    case "off":
+                        finalStatus = "offline"
+                        break;
+                    case "pausing":
+                    case "paused":
+                        finalStatus = "paused";
+                    case "busy":
+                    case "cancelling":
+                    case "resuming":
+                    case "updating":
+                    case "starting":
+                    case "simulating":
+                    case "changingTool":
+                    case "processing":
+                        finalStatus = "busy"
+                        break;
+                    case "halted":
+                        finalStatus = "error"
+                        break;
+                    case "idle":
+                        finalStatus = "available"
+                    default:
+                        break;
+                }
+
+                equipment = await Equipment.findByIdAndUpdate(id, {
+                    status: finalStatus
+                });
+            }
             return res.status(200).json(equipment);
         } else {
             return res.status(400).send({ message: "Missing Equipment ID." });
@@ -150,7 +222,7 @@ const getAllEquipment = async (req, res) => {
                 filter.category = category; // It's a string, use it as is
             }
         }
-        const equipments = await Equipment.find(filter).sort({name: 1});
+        const equipments = await Equipment.find(filter).sort({ name: 1 });
         return res.status(200).json(equipments);
     } catch (err) {
         console.error(err.message);
@@ -167,4 +239,5 @@ module.exports = {
     editEquipment,
     getEquipment,
     getAllEquipment,
+    updateStatus,
 };

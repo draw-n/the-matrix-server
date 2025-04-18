@@ -10,6 +10,7 @@ const EquipmentSchema = new Schema({
     name: { type: String, required: true },
     routePath: { type: String, required: true },
     headline: { type: String },
+    ipUrl: { type: String },
     category: {
         type: ObjectId,
         required: true,
@@ -17,7 +18,7 @@ const EquipmentSchema = new Schema({
     },
     properties: {
         nozzle: { type: Number },
-        materials: [{ type: String }],
+        material: { type: String },
     },
     status: {
         type: String,
