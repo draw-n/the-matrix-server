@@ -1,9 +1,20 @@
-const preCheck = (fileName, filePath, allowed_extensions) => {
+/**
+ *
+ * @param {*} fileName
+ * @param {*} filePath
+ * @param {*} allowed_extensions
+ * @returns
+ */
+const checkFileExtensions = (fileName, allowed_extensions) => {
+    const file_extension = fileName.slice(fileName.lastIndexOf("."));
+    if (!allowed_extensions.includes(file_extension.toLowerCase())) {
+        console.log(file_extension);
+        return false;
+    }
+    return true;
+};
 
-}
+const cleanUp = (folderPath) => {};
 
-const cleanUp = (folderPath) => {
-    
-}
-
-module.exports = { preCheck };
+const moveFile = (oldPath, newPath) => {};
+module.exports = { checkFileExtensions , moveFile};

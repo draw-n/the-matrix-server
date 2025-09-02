@@ -1,8 +1,6 @@
 const express = require("express");
 const session = require("express-session");
 const cors = require("cors");
-const path = require("path");
-const multer = require("multer");
 const passport = require("passport");
 
 const connectDB = require("./config/database.js");
@@ -35,32 +33,8 @@ app.use(express.json());
 
 connectDB();
 
-var storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        //keep hidden in production for now, don't want files constantly getting stored lol
-        console.log(file);
 
-        cb(null, path.join(__dirname, "/uploads/"));
-    },
-    filename: function (req, file, cb) {
-        cb(null, file.originalname);
-    },
-    fileFilter: function (req, file, callback) {
-        console.log(file.originalname);
-        var ext = path.extname(file.originalname);
-        if (ext !== ".3mf" && ext !== ".stl") {
-            return callback(new Error("Only models are allowed"));
-        }
-        callback(null, true);
-    },
-});
-const upload = multer({ storage: storage });
-const fileUpload = upload.fields([{ name: "file", maxCount: 1 }]);
-
-app.post("/upload", fileUpload, (req, res) => {
-    res.json({ message: "Model successfully uploaded!" });
-});
-
+app.use("/jobs", require("./routes/jobs.router.js"));
 app.use("/issues", require("./routes/issues.router.js"));
 app.use("/announcements", require("./routes/announcements.router.js"));
 app.use("/users", require("./routes/users.router.js"));
