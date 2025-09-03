@@ -1,3 +1,4 @@
+const axios = require("axios");
 /**
  * connect to duet printer
  * @param {*} printerIp - ip address of the printer
