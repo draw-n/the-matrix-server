@@ -21,14 +21,14 @@ const sliceMeshToGcode = (fileName, options) => {
                 }
                 console.log(`stdout: ${stdout}`);
                 console.error(`stderr: ${stderr}`);
-                resolve(finalGcodePath); 
+                resolve([gcodeFileName, finalGcodePath]); 
             }
         );
     });
 };
 
 const processSlicingOptions = (options) => {
-    
+
 }
 
 

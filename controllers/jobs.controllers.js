@@ -19,7 +19,7 @@ const createJob = async (req, res) => {
     try {
         // after file upload
         // slice file to gcode
-        const gcodeFilePath = await sliceMeshToGcode(fileName, options);
+        const [gcodeFileName, gcodeFilePath] = await sliceMeshToGcode(fileName, options);
         console.log("Gcode file created:", gcodeFilePath);
         // find free printer
         const printerIp = await findFreePrinter();
@@ -27,7 +27,7 @@ const createJob = async (req, res) => {
         const connect = await connectToDuet(printerIp);
         console.log("Connected to printer:", connect);
         // upload gcode to printer
-        const sendGcode = await sendGcodeToDuet(printerIp, gcodeFileName);
+        const sendGcode = await sendGcodeToDuet(printerIp, gcodeFileName, gcodeFilePath);
         console.log("Gcode sent to printer:", sendGcode);
         // start print
         const starting = await startPrint();

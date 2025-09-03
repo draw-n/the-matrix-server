@@ -1,4 +1,5 @@
 const axios = require("axios");
+const { readFile } = require("../utils/file.utils.js");
 /**
  * connect to duet printer
  * @param {*} printerIp - ip address of the printer
@@ -17,10 +18,17 @@ const connectToDuet = async (printerIp) => {
  * @param {*} fileName - name of the gcode file
  * @returns
  */
-const sendGcodeToDuet = async (printerIp, fileName) => {
-    const response = await axios.post(`http://${printerIp}/rr_upload`, {
-        params: { name: `/gcodes/${fileName}`, file: fileContent },
-    });
+const sendGcodeToDuet = async (printerIp, fileName, filePath) => {
+    const fileData = readFile(filePath);
+
+    const response = await axios.post(
+        `http://${printerIp}/rr_upload`,
+        fileData,
+        {
+            params: { name: `/gcodes/${fileName}` },
+            headers: { "Content-Type": "application/octet-stream" },
+        }
+    );
 
     return response.data;
 };

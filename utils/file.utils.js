@@ -16,6 +16,10 @@ const checkFileExtensions = (fileName, allowed_extensions) => {
     return true;
 };
 
+const readFile = (filePath) => {
+    return fs.readFileSync(filePath);
+}
+
 const cleanUp = (folderPath) => {};
 
 const moveFile = (oldPath, newPath) => {
@@ -24,4 +28,4 @@ const moveFile = (oldPath, newPath) => {
         console.log("File moved from " + oldPath + " to " + newPath);
     });
 };
-module.exports = { checkFileExtensions, moveFile };
+module.exports = { checkFileExtensions, moveFile, readFile };
