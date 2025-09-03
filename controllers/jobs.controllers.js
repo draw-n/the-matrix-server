@@ -30,7 +30,7 @@ const createJob = async (req, res) => {
         const sendGcode = await sendGcodeToDuet(printerIp, gcodeFileName, gcodeFilePath);
         console.log("Gcode sent to printer:", sendGcode);
         // start print
-        const starting = await startPrint(gcodeFileName);
+        const starting = await startPrint(printerIp, gcodeFileName);
         console.log("Print started:", starting);
         return res.status(200).json({ message: "Job created successfully." });
     } catch (err) {
