@@ -11,9 +11,9 @@ const sliceMeshToGcode = (fileName, options) => {
         console.error(`stderr: ${stderr}`);
     });
     exec(
-        `./slicer-cli/superslicer/bin/superslicer -g ${
+        `./slicer-cli/superslicer/bin/superslicer -g \"${
             process.env.MESH_INPUT_DIR || "meshes"
-        }/${fileName}`,
+        }/${fileName}\"`,
         (error, stdout, stderr) => {
             if (error) {
                 console.error(`exec error: ${error}`);
