@@ -7,8 +7,14 @@ const sliceMeshToGcode = (fileName, options) => {
         const filePath =
             (process.env.MESH_INPUT_DIR || "meshes") + "/" + fileName;
         const gcodeFileName = fileName.replace(/\.[^/.]+$/, ".gcode");
-        const outputPath = path.resolve(meshDir, gcodeFileName);
-        const finalGcodePath = path.resolve(gcodeDir, gcodeFileName);
+        const outputPath = path.resolve(
+            process.env.MESH_INPUT_DIR || "meshes",
+            gcodeFileName
+        );
+        const finalGcodePath = path.resolve(
+            process.env.GCODE_OUTPUT_DIR || "gcodes",
+            gcodeFileName
+        );
         X;
         exec(
             `./slicer-cli/superslicer/bin/superslicer --output ${finalGcodePath} -g "${filePath}"`,
