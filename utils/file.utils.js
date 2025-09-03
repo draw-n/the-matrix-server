@@ -1,3 +1,5 @@
+const fs = require("fs");
+
 /**
  *
  * @param {*} fileName
@@ -16,5 +18,10 @@ const checkFileExtensions = (fileName, allowed_extensions) => {
 
 const cleanUp = (folderPath) => {};
 
-const moveFile = (oldPath, newPath) => {};
-module.exports = { checkFileExtensions , moveFile};
+const moveFile = (oldPath, newPath) => {
+    fs.rename(oldPath, newPath, function (err) {
+        if (err) throw err;
+        console.log("File moved from " + oldPath + " to " + newPath);
+    });
+};
+module.exports = { checkFileExtensions, moveFile };
