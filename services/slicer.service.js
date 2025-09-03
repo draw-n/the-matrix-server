@@ -10,9 +10,9 @@ const sliceMeshToGcode = (fileName, options) => {
             process.env.GCODE_OUTPUT_DIR || "gcodes",
             gcodeFileName
         );
-    
+        const materialFile = "./slicer-cli/configurations/pla_config.ini"
         exec(
-            `./slicer-cli/superslicer/bin/superslicer --output "${finalGcodePath}" -g "${filePath}"`,
+            `./slicer-cli/superslicer/bin/superslicer --output "${finalGcodePath}" -g "${filePath}" --load "${materialFile}"`,
             (error, stdout, stderr) => {
                 if (error) {
                     console.error(`exec error: ${error}`);
