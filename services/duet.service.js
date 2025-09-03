@@ -46,7 +46,7 @@ const startPrint = async (printerIp, fileName) => {
     const start = await axios.get(`http://${printerIp}/rr_gcode`, {
         params: { gcode: `M24` },
     });
-    return response.data;
+    return start.data;
 };
 
 /**
