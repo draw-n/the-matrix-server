@@ -7,17 +7,13 @@ const sliceMeshToGcode = (fileName, options) => {
         const filePath =
             (process.env.MESH_INPUT_DIR || "meshes") + "/" + fileName;
         const gcodeFileName = fileName.replace(/\.[^/.]+$/, ".gcode");
-        const outputPath = path.resolve(
-            process.env.MESH_INPUT_DIR || "meshes",
-            gcodeFileName
-        );
         const finalGcodePath = path.resolve(
             process.env.GCODE_OUTPUT_DIR || "gcodes",
             gcodeFileName
         );
     
         exec(
-            `./slicer-cli/superslicer/bin/superslicer --output "${gcodeFileName}" -g "${filePath}"`,
+            `./slicer-cli/superslicer/bin/superslicer --output "${finalGcodePath}" -g "${filePath}"`,
             (error, stdout, stderr) => {
                 if (error) {
                     console.error(`exec error: ${error}`);
@@ -29,7 +25,6 @@ const sliceMeshToGcode = (fileName, options) => {
 
                 console.log("gcode:" + gcodeFileName);
                 // move gcode file to gcode folder
-                moveFile(outputPath, finalGcodePath);
                 resolve(gcodeFileName); // should be returning file name
             }
         );
