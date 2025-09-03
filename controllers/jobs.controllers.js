@@ -27,9 +27,11 @@ const createJob = async (req, res) => {
         const connect = await connectToDuet(printerIp);
         console.log("Connected to printer:", connect);
         // upload gcode to printer
-        //await sendGcodeToDuet(printerIp, gcodeFileName);
+        const sendGcode = await sendGcodeToDuet(printerIp, gcodeFileName);
+        console.log("Gcode sent to printer:", sendGcode);
         // start print
-        //await startPrint();
+        const starting = await startPrint();
+        console.log("Print started:", starting);
         return res.status(200).json({ message: "Job created successfully." });
     } catch (err) {
         console.error(err.message);
@@ -64,6 +66,8 @@ const preProcess = async (req, res) => {
                 .status(400)
                 .send({ message: "Invalid file type uploaded." });
         }
+
+        //TODO: include checking whether file exists
 
         // Explicitly end the response to avoid hanging
         return res.status(200).send({ message: "File pre-processed successfully." });

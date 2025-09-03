@@ -18,7 +18,7 @@ const connectToDuet = async (printerIp) => {
  * @returns
  */
 const sendGcodeToDuet = async (printerIp, fileName) => {
-    const response = await axios.post(`http://${printer_ip}/rr_upload`, {
+    const response = await axios.post(`http://${printerIp}/rr_upload`, {
         params: { name: `/gcodes/${fileName}`, file: fileContent },
     });
 
@@ -62,4 +62,5 @@ module.exports = {
     sendGcodeToDuet,
     startPrint,
     getPrinterStatus,
+    disconnectFromDuet,
 };

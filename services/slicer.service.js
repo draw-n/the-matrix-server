@@ -27,4 +27,9 @@ const sliceMeshToGcode = (fileName, options) => {
     });
 };
 
+const processSlicingOptions = (options) => {
+    
+}
+
+
 module.exports = { sliceMeshToGcode };
