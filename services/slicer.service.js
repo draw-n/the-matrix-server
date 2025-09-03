@@ -1,5 +1,4 @@
 const { exec } = require("child_process");
-const { moveFile } = require("../utils/file.utils.js");
 const path = require("path");
 const sliceMeshToGcode = (fileName, options) => {
     console.log("Slicing file:", fileName, "with options:", options);
@@ -22,10 +21,7 @@ const sliceMeshToGcode = (fileName, options) => {
                 }
                 console.log(`stdout: ${stdout}`);
                 console.error(`stderr: ${stderr}`);
-
-                console.log("gcode:" + gcodeFileName);
-                // move gcode file to gcode folder
-                resolve(gcodeFileName); // should be returning file name
+                resolve(finalGcodePath); 
             }
         );
     });

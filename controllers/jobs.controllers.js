@@ -19,15 +19,17 @@ const createJob = async (req, res) => {
     try {
         // after file upload
         // slice file to gcode
-        const gcodeFileName = await sliceMeshToGcode(fileName, options);
+        const gcodeFilePath = await sliceMeshToGcode(fileName, options);
+        console.log("Gcode file created:", gcodeFilePath);
         // find free printer
         const printerIp = await findFreePrinter();
         // connect to printer
-        await connectToDuet(printerIp);
+        const connect = await connectToDuet(printerIp);
+        console.log("Connected to printer:", connect);
         // upload gcode to printer
-        await sendGcodeToDuet(printerIp, gcodeFileName);
+        //await sendGcodeToDuet(printerIp, gcodeFileName);
         // start print
-        await startPrint();
+        //await startPrint();
         return res.status(200).json({ message: "Job created successfully." });
     } catch (err) {
         console.error(err.message);
@@ -80,7 +82,7 @@ const preProcess = async (req, res) => {
  * @returns - ip address of free printer
  */
 const findFreePrinter = async () => {
-    return "10.0.0.51";
+    return "10.68.1.176";
 };
 
 module.exports = { createJob, preProcess };
