@@ -15,9 +15,9 @@ const sliceMeshToGcode = (fileName, options) => {
             process.env.GCODE_OUTPUT_DIR || "gcodes",
             gcodeFileName
         );
-        X;
+    
         exec(
-            `./slicer-cli/superslicer/bin/superslicer --output "${finalGcodePath}" -g "${filePath}"`,
+            `./slicer-cli/superslicer/bin/superslicer --output "${gcodeFileName}" -g "${filePath}"`,
             (error, stdout, stderr) => {
                 if (error) {
                     console.error(`exec error: ${error}`);
