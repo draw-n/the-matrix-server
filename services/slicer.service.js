@@ -4,9 +4,7 @@ const sliceMeshToGcode = (fileName, options) => {
     const filePath = `${process.env.MESH_INPUT_DIR || "meshes"}/${fileName}`;
     console.log("Slicing file:", fileName, "with options:", options);
     exec(
-        `./slicer-cli/superslicer/bin/superslicer -g "${
-            process.env.MESH_INPUT_DIR || "meshes"
-        }/${fileName}"`,
+        `./slicer-cli/superslicer/bin/superslicer -g "${filePath}"`,
         (error, stdout, stderr) => {
             if (error) {
                 console.error(`exec error: ${error}`);
