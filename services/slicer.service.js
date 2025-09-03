@@ -16,10 +16,13 @@ const sliceMeshToGcode = (fileName, options) => {
                 console.error(`stderr: ${stderr}`);
 
                 const gcodeFileName = fileName.replace(/\.[^/.]+$/, ".gcode");
+                console.log("gcode:" + gcodeFileName);
                 // move gcode file to gcode folder
                 moveFile(
                     filePath.replace(/\.[^/.]+$/, ".gcode"),
-                    `${process.env.GCODE_OUTPUT_DIR || "gcodes"}/${gcodeFileName}`
+                    `${
+                        process.env.GCODE_OUTPUT_DIR || "gcodes"
+                    }/${gcodeFileName}`
                 );
                 resolve(gcodeFileName); // should be returning file name
             }
