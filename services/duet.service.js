@@ -40,7 +40,7 @@ const sendGcodeToDuet = async (printerIp, fileName, filePath) => {
  */
 const startPrint = async (printerIp) => {
     const response = await axios.get(`http://${printerIp}/rr_gcode`, {
-        params: { gcode: `M23\nM24` },
+        params: { gcode: `M23;M24` },
     });
     return response.data;
 };
