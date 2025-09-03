@@ -32,6 +32,7 @@ const createJob = async (req, res) => {
         // start print
         const starting = await startPrint(printerIp, gcodeFileName);
         console.log("Print started:", starting);
+        
         return res.status(200).json({ message: "Job created successfully." });
     } catch (err) {
         console.error(err.message);

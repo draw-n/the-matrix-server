@@ -39,8 +39,12 @@ const sendGcodeToDuet = async (printerIp, fileName, filePath) => {
  * @returns - print start status
  */
 const startPrint = async (printerIp, fileName) => {
-    const response = await axios.get(`http://${printerIp}/rr_gcode`, {
-        params: { gcode: `M23 ${fileName};M24` },
+    const load = await axios.get(`http://${printerIp}/rr_gcode`, {
+        params: { gcode: `M23 ${fileName}` },
+    });
+
+    const start = await axios.get(`http://${printerIp}/rr_gcode`, {
+        params: { gcode: `M24` },
     });
     return response.data;
 };
