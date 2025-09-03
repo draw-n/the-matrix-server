@@ -1,15 +1,21 @@
-const { spawn } = require("child_process");
+const { exec } = require("child_process");
 const { moveFile } = require("../utils/file.utils.js");
 const sliceMeshToGcode = (fileName, options) => {
     const filePath = `${process.env.MESH_INPUT_DIR || "meshes"}/${fileName}`;
     console.log("Slicing file:", fileName, "with options:", options);
-    const slicer = spawn("./slicer-cli/superslicer/bin/superslicer", [
-        "-g",
-        filePath,
-    ]);
-
-    slicer.stdout.on("data", (data) => console.log(data.toString()));
-    slicer.stderr.on("data", (err) => console.error(err.toString()));
+    exec(
+        `./slicer-cli/superslicer/bin/superslicer -g "${
+            process.env.MESH_INPUT_DIR || "meshes"
+        }/${fileName}"`,
+        (error, stdout, stderr) => {
+            if (error) {
+                console.error(`exec error: ${error}`);
+                return;
+            }
+            console.log(`stdout: ${stdout}`);
+            console.error(`stderr: ${stderr}`);
+        }
+    );
 
     gcodeFileName = fileName.replace(/\.[^/.]+$/, ".gcode");
     // move gcode file to gcode folder
