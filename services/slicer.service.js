@@ -1,7 +1,7 @@
 const { exec } = require("child_process");
 const { moveFile } = require("../utils/file.utils.js");
-const sliceMeshToGcode = (filePath, fileName, options) => {
-    console.log("Slicing file:", filePath, "with options:", options);
+const sliceMeshToGcode = (fileName, options) => {
+    console.log("Slicing file:", fileName, "with options:", options);
     exec(`pwd`, (error, stdout, stderr) => {
         if (error) {
             console.error(`exec error: ${error}`);
@@ -11,7 +11,9 @@ const sliceMeshToGcode = (filePath, fileName, options) => {
         console.error(`stderr: ${stderr}`);
     });
     exec(
-        `./slicer-cli/superslicer/bin/superslicer -g ${filePath}`,
+        `./slicer-cli/superslicer/bin/superslicer -g ${
+            process.env.MESH_INPUT_DIR || "meshes"
+        }/${fileName}`,
         (error, stdout, stderr) => {
             if (error) {
                 console.error(`exec error: ${error}`);
