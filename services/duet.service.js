@@ -1,5 +1,5 @@
 const axios = require("axios");
-const { readFile } = require("../utils/file.utils.js");
+const { readFile, delay } = require("../utils/file.utils.js");
 /**
  * connect to duet printer
  * @param {*} printerIp - ip address of the printer
@@ -42,7 +42,7 @@ const startPrint = async (printerIp, fileName) => {
     const load = await axios.get(`http://${printerIp}/rr_gcode`, {
         params: { gcode: `M23 ${fileName}` },
     });
-
+    delay(2000); // wait for 2 seconds to ensure the file is loaded
     const start = await axios.get(`http://${printerIp}/rr_gcode`, {
         params: { gcode: `M24` },
     });

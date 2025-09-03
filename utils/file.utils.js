@@ -28,4 +28,6 @@ const moveFile = (oldPath, newPath) => {
         console.log("File moved from " + oldPath + " to " + newPath);
     });
 };
-module.exports = { checkFileExtensions, moveFile, readFile };
+
+const delay = ms => new Promise(res => setTimeout(res, ms));
+module.exports = { checkFileExtensions, moveFile, readFile, delay };
