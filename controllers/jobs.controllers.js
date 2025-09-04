@@ -15,7 +15,7 @@ const {
  */
 const createJob = async (req, res) => {
     // request needs to contain filename, may have options
-    const { fileName, options } = req.body;
+    const { fileName, material, options } = req.body;
     try {
         // after file upload
         // slice file to gcode

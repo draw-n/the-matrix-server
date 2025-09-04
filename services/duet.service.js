@@ -42,7 +42,6 @@ const startPrint = async (printerIp, fileName) => {
     const load = await axios.get(`http://${printerIp}/rr_gcode`, {
         params: { gcode: `M23 ${fileName}` },
     });
-    delay(2000); // wait for 2 seconds to ensure the file is loaded
     const start = await axios.get(`http://${printerIp}/rr_gcode`, {
         params: { gcode: `M24` },
     });

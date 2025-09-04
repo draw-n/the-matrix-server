@@ -10,9 +10,9 @@ const sliceMeshToGcode = (fileName, options) => {
             process.env.GCODE_OUTPUT_DIR || "gcodes",
             gcodeFileName
         );
-        const materialFile = "./slicer-cli/configurations/pla_config.ini"
+        const materialFile = "./slicer-cli/configurations/pla_config.ini";
         exec(
-            `./slicer-cli/superslicer/bin/superslicer --output "${finalGcodePath}" -g "${filePath}" --load "${materialFile}"`,
+            `./slicer-cli/superslicer --output "${finalGcodePath}" -g "${filePath}" --load "${materialFile}"`,
             (error, stdout, stderr) => {
                 if (error) {
                     console.error(`exec error: ${error}`);
@@ -21,15 +21,39 @@ const sliceMeshToGcode = (fileName, options) => {
                 }
                 console.log(`stdout: ${stdout}`);
                 console.error(`stderr: ${stderr}`);
-                resolve([gcodeFileName, finalGcodePath]); 
+                resolve([gcodeFileName, finalGcodePath]);
             }
         );
     });
 };
 
 const processSlicingOptions = (options) => {
+    const referenceOptions = {
+        infill: "--fill-density",
+        layerHeight: "--layer-height",
+        supports: "",
+        temperatures: {
+            extruder: {
+                firstLayer: "--first-layer-temperature",
+                otherLayers: "--temperature",
+            },
+            bed: {
+                firstLayer: "--first-layer-bed-temperature",
+                otherLayers: "-bed-temperature",
+            },
+        },
+        horizontalShell: {
+            topLayers: "--top-solid-layers",
+            bottomLayers: "--bottom-solid-layers",
+        },
+        verticalShell: {
+            perimeters: "--perimeters",
+        },
+    };
 
-}
-
+    let optionsString = "";
+    for (const [key, value] of Object.entries(options)) {
+    }
+};
 
 module.exports = { sliceMeshToGcode };
