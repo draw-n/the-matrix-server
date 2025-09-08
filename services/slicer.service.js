@@ -45,7 +45,7 @@ const processSlicingOptions = (options) => {
             },
             bed: {
                 firstLayer: "--first-layer-bed-temperature", // in C
-                otherLayers: "-bed-temperature", // in C
+                otherLayers: "--bed-temperature", // in C
             },
         },
         horizontalShell: {
