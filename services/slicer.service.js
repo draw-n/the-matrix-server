@@ -63,6 +63,19 @@ const processSlicingOptions = (options) => {
             if (typeof value === "object" && value !== null) {
                 for (const [subKey, subValue] of Object.entries(value)) {
                     if (
+                        typeof referenceOptions[key][subKey] === "object" &&
+                        referenceOptions[key][subKey] !== null
+                    ) {
+                        // Handle deeper nesting (e.g., temperatures.extruder.firstLayer)
+                        for (const [subSubKey, subSubValue] of Object.entries(subValue)) {
+                            if (
+                                subSubKey in referenceOptions[key][subKey] &&
+                                referenceOptions[key][subKey][subSubKey]
+                            ) {
+                                optionsString += ` ${referenceOptions[key][subKey][subSubKey]} ${subSubValue}`;
+                            }
+                        }
+                    } else if (
                         subKey in referenceOptions[key] &&
                         referenceOptions[key][subKey]
                     ) {
