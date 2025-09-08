@@ -33,6 +33,7 @@ const sliceMeshToGcode = (fileName, options) => {
  */
 
 const processSlicingOptions = (options) => {
+    console.log("Processing slicing options:", options);
     const referenceOptions = {
         infill: "--fill-density", // asks for decimals 0-1
         layerHeight: "--layer-height", // asks for layer height in mm
@@ -76,9 +77,9 @@ const processSlicingOptions = (options) => {
         } else {
             console.warn(`Unknown option: ${key}`);
         }
-        console.log("Processed slicing options:", optionsString);
-        return optionsString.trim();
     }
+    console.log("Processed slicing options:", optionsString);
+    return optionsString.trim();
 };
 
 module.exports = { sliceMeshToGcode, processSlicingOptions };
