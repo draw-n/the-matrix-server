@@ -1,5 +1,8 @@
 const { checkFileExtensions } = require("../utils/file.utils.js");
-const { sliceMeshToGcode } = require("../services/slicer.service.js");
+const {
+    sliceMeshToGcode,
+    processSlicingOptions,
+} = require("../services/slicer.service.js");
 const {
     startPrint,
     connectToDuet,
@@ -19,8 +22,14 @@ const createJob = async (req, res) => {
     try {
         // after file upload
         // slice file to gcode
-        const [gcodeFileName, gcodeFilePath] = await sliceMeshToGcode(fileName, options);
+        const processedOptions = processSlicingOptions(options);
+        console.log("Processed options:", processedOptions);
+        const [gcodeFileName, gcodeFilePath] = await sliceMeshToGcode(
+            fileName,
+            options
+        );
         console.log("Gcode file created:", gcodeFilePath);
+
         // find free printer
         const printerIp = await findFreePrinter();
         // connect to printer
@@ -29,15 +38,21 @@ const createJob = async (req, res) => {
         const status = await getPrinterStatus(printerIp);
         console.log("Printer status:", status);
         if (status !== "idle") {
-            return res.status(400).json({ message: "No free printer available." });
+            return res
+                .status(400)
+                .json({ message: "No free printer available." });
         }
         // upload gcode to printer
-        const sendGcode = await sendGcodeToDuet(printerIp, gcodeFileName, gcodeFilePath);
+        const sendGcode = await sendGcodeToDuet(
+            printerIp,
+            gcodeFileName,
+            gcodeFilePath
+        );
         console.log("Gcode sent to printer:", sendGcode);
         // start print
         const starting = await startPrint(printerIp, gcodeFileName);
         console.log("Print started:", starting);
-        
+
         return res.status(200).json({ message: "Job created successfully." });
     } catch (err) {
         console.error(err.message);
@@ -76,7 +91,9 @@ const preProcess = async (req, res) => {
         //TODO: include checking whether file exists
 
         // Explicitly end the response to avoid hanging
-        return res.status(200).send({ message: "File pre-processed successfully." });
+        return res
+            .status(200)
+            .send({ message: "File pre-processed successfully." });
     } catch (err) {
         console.error(err.message);
         // Explicitly end the response to avoid hanging
