@@ -26,6 +26,11 @@ const createJob = async (req, res) => {
         // connect to printer
         const connect = await connectToDuet(printerIp);
         console.log("Connected to printer:", connect);
+        const status = await getPrinterStatus(printerIp);
+        console.log("Printer status:", status);
+        if (status !== "idle") {
+            return res.status(400).json({ message: "No free printer available." });
+        }
         // upload gcode to printer
         const sendGcode = await sendGcodeToDuet(printerIp, gcodeFileName, gcodeFilePath);
         console.log("Gcode sent to printer:", sendGcode);

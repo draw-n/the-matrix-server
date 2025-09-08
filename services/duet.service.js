@@ -54,7 +54,9 @@ const startPrint = async (printerIp, fileName) => {
  * @returns - printer status
  */
 const getPrinterStatus = async (printerIp) => {
-    const response = await axios.get(`http://${printerIp}/rr_model?key=state`);
+    const response = await axios.get(
+        `http://${equipment.ipUrl}/rr_model?key=state.status`
+    );
     return response.data.result;
 };
 
