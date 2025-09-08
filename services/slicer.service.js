@@ -2,6 +2,8 @@ const { exec } = require("child_process");
 const path = require("path");
 const sliceMeshToGcode = (fileName, options) => {
     console.log("Slicing file:", fileName, "with options:", options);
+    const processedOptions = processSlicingOptions(options);
+    console.log("Processed options:", processedOptions);
     return new Promise((resolve, reject) => {
         const filePath =
             (process.env.MESH_INPUT_DIR || "meshes") + "/" + fileName;
@@ -27,33 +29,59 @@ const sliceMeshToGcode = (fileName, options) => {
     });
 };
 
+/**
+ * process slicing options into command line arguments
+ * @param {*} options - slicing options
+ * @returns - command line arguments
+ */
+
 const processSlicingOptions = (options) => {
     const referenceOptions = {
-        infill: "--fill-density",
-        layerHeight: "--layer-height",
-        supports: "",
+        infill: "--fill-density", // asks for decimals 0-1
+        layerHeight: "--layer-height", // asks for layer height in mm
+        supports: "--support-material", // puts support material if this exists
         temperatures: {
             extruder: {
-                firstLayer: "--first-layer-temperature",
-                otherLayers: "--temperature",
+                firstLayer: "--first-layer-temperature", // in C
+                otherLayers: "--temperature", // in C
             },
             bed: {
-                firstLayer: "--first-layer-bed-temperature",
-                otherLayers: "-bed-temperature",
+                firstLayer: "--first-layer-bed-temperature", // in C
+                otherLayers: "-bed-temperature", // in C
             },
         },
         horizontalShell: {
-            topLayers: "--top-solid-layers",
-            bottomLayers: "--bottom-solid-layers",
+            topLayers: "--top-solid-layers", // 0 and above
+            bottomLayers: "--bottom-solid-layers", // 0 and above
         },
         verticalShell: {
-            perimeters: "--perimeters",
+            perimeters: "--perimeters", // 0 and above
         },
     };
 
     let optionsString = "";
     for (const [key, value] of Object.entries(options)) {
+        if (key in referenceOptions) {
+            if (typeof value === "object" && value !== null) {
+                for (const [subKey, subValue] of Object.entries(value)) {
+                    if (
+                        subKey in referenceOptions[key] &&
+                        referenceOptions[key][subKey]
+                    ) {
+                        optionsString += ` ${referenceOptions[key][subKey]} ${subValue}`;
+                    }
+                }
+            } else if (referenceOptions[key]) {
+                if (key === "supports") {
+                    optionsString += value ? ` ${referenceOptions[key]}` : "";
+                } else optionsString += ` ${referenceOptions[key]} ${value}`;
+            }
+        } else {
+            console.warn(`Unknown option: ${key}`);
+        }
+        console.log("Processed slicing options:", optionsString);
+        return optionsString.trim();
     }
 };
 
-module.exports = { sliceMeshToGcode };
+module.exports = { sliceMeshToGcode, processSlicingOptions };
