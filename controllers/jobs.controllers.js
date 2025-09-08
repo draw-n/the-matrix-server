@@ -24,34 +24,34 @@ const createJob = async (req, res) => {
         // slice file to gcode
         const processedOptions = processSlicingOptions(options);
         console.log("Processed options:", processedOptions);
-        const [gcodeFileName, gcodeFilePath] = await sliceMeshToGcode(
-            fileName,
-            options
-        );
-        console.log("Gcode file created:", gcodeFilePath);
+        // const [gcodeFileName, gcodeFilePath] = await sliceMeshToGcode(
+        //     fileName,
+        //     options
+        // );
+        // console.log("Gcode file created:", gcodeFilePath);
 
-        // find free printer
-        const printerIp = await findFreePrinter();
-        // connect to printer
-        const connect = await connectToDuet(printerIp);
-        console.log("Connected to printer:", connect);
-        const status = await getPrinterStatus(printerIp);
-        console.log("Printer status:", status);
-        if (status !== "idle") {
-            return res
-                .status(400)
-                .json({ message: "No free printer available." });
-        }
-        // upload gcode to printer
-        const sendGcode = await sendGcodeToDuet(
-            printerIp,
-            gcodeFileName,
-            gcodeFilePath
-        );
-        console.log("Gcode sent to printer:", sendGcode);
-        // start print
-        const starting = await startPrint(printerIp, gcodeFileName);
-        console.log("Print started:", starting);
+        // // find free printer
+        // //const printerIp = await findFreePrinter();
+        // // connect to printer
+        // //const connect = await connectToDuet(printerIp);
+        // //console.log("Connected to printer:", connect);
+        // const status = await getPrinterStatus(printerIp);
+        // console.log("Printer status:", status);
+        // if (status !== "idle") {
+        //     return res
+        //         .status(400)
+        //         .json({ message: "No free printer available." });
+        // }
+        // // upload gcode to printer
+        // const sendGcode = await sendGcodeToDuet(
+        //     printerIp,
+        //     gcodeFileName,
+        //     gcodeFilePath
+        // );
+        // console.log("Gcode sent to printer:", sendGcode);
+        // // start print
+        // const starting = await startPrint(printerIp, gcodeFileName);
+        // console.log("Print started:", starting);
 
         return res.status(200).json({ message: "Job created successfully." });
     } catch (err) {
