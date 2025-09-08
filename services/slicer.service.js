@@ -2,7 +2,6 @@ const { exec } = require("child_process");
 const path = require("path");
 const sliceMeshToGcode = (fileName, options) => {
     console.log("Slicing file:", fileName, "with options:", options);
-    const processedOptions = processSlicingOptions(options);
     return new Promise((resolve, reject) => {
         const filePath =
             (process.env.MESH_INPUT_DIR || "meshes") + "/" + fileName;
@@ -20,7 +19,6 @@ const sliceMeshToGcode = (fileName, options) => {
                     reject(error);
                     return;
                 }
-                console.log("Processed options:", processedOptions);
 
                 resolve([gcodeFileName, finalGcodePath]);
             }
