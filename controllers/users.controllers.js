@@ -160,10 +160,31 @@ const getAllUsers = async (req, res) => {
     }
 };
 
+/**
+ * retrieves all user emails from MongoDB
+ * @param {*} req - request details
+ * @param {*} res - response details
+ * @returns - response details (with status)
+ */
+const getEmails = async (req, res) => {
+    try {
+        const users = await User.find();
+
+        const emails = users.map(user => user.email).join(',');
+
+        res.setHeader('Content-Disposition', 'attachment; filename="emails.txt"');
+        res.setHeader('Content-Type', 'text/plain');
+        return res.status(200).send(emails);
+    } catch (err) {
+        return res.status(500).send({ message: err.message });
+    }
+};
+
 module.exports = {
     createUser,
     deleteUser,
     updateUser,
     getUser,
     getAllUsers,
+    getEmails,
 };
