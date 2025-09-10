@@ -26,7 +26,7 @@ const createJob = async (req, res) => {
         console.log("Processed options:", processedOptions);
         const [gcodeFileName, gcodeFilePath] = await sliceMeshToGcode(
             fileName,
-            options
+            processedOptions
         );
         console.log("Gcode file created:", gcodeFilePath);
 
