@@ -6,7 +6,7 @@ const {
     getAllUsers,
     updateUser,
     deleteUser,
-    getEmails
+    getEmails,
 } = require("../controllers/users.controllers.js");
 
 const router = express.Router();
@@ -14,43 +14,46 @@ const router = express.Router();
 router.post("/", createUser);
 router.put("/:id", updateUser);
 router.get("/", getAllUsers);
+router.get("/me", (req, res) => {
+    if (req.isAuthenticated() && req.user) {
+        // Remove password field if present
+        const { password, ...userWithoutPassword } = req.user.toObject
+            ? req.user.toObject()
+            : req.user;
+        res.json({ user: userWithoutPassword });
+    } else {
+        res.json({ user: null });
+    }
+});
 router.get("/emails", getEmails);
 router.get("/:id", getUser);
 router.delete("/:id", deleteUser);
+
 router.post("/register", createUser);
 router.post("/login", (req, res, next) => {
-    passport.authenticate("local", { session: true }, (err, user, info) => {
-        if (err) {
-            // If there's an internal server error
-            return res.status(500).json({ error: "Internal server error" });
-        }
-
-        if (!user) {
-            // If the authentication fails, `user` will be null and `info` will contain the message
+    passport.authenticate("local", (err, user, info) => {
+        if (err) return next(err);
+        if (!user)
             return res
-                .status(400)
-                .json({ message: info.message || "Authentication failed" });
-        }
-
-        // If the user is authenticated, log them in
-        req.login(user, (loginErr) => {
-            if (loginErr) {
-                return res
-                    .status(500)
-                    .json({ error: "Failed to login the user." });
-            }
-
-            // Convert the user to a plain object if necessary
-            let plainUser = user.toObject ? user.toObject() : user;
-
-            // Remove sensitive data like password
-            delete plainUser.password;
-
-            // Send success response with the user object (without password)
-            return res
-                .status(200)
-                .json({ message: "Login successful", user: plainUser });
+                .status(401)
+                .json({ user: null, message: info?.message || "Login failed" });
+        req.logIn(user, (err) => {
+            if (err) return next(err);
+            // Remove password field if present
+            const { password, ...userWithoutPassword } = user.toObject
+                ? user.toObject()
+                : user;
+            return res.json({ user: userWithoutPassword });
         });
-    })(req, res, next); // Execute the passport strategy
+    })(req, res, next);
+});
+router.post("/logout", (req, res) => {
+    req.logout(function (err) {
+        if (err) return res.status(500).json({ message: "Logout failed" });
+        req.session?.destroy(() => {
+            res.clearCookie("connect.sid");
+            res.json({ message: "Logged out" });
+        });
+    });
 });
 module.exports = router;
