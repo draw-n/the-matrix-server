@@ -1,4 +1,8 @@
-const { checkFileExtensions } = require("../utils/file.utils.js");
+const {
+    checkFileExtensions,
+    getFileExtension,
+    moveFile,
+} = require("../utils/file.utils.js");
 const {
     sliceMeshToGcode,
     processSlicingOptions,
@@ -21,14 +25,28 @@ const createJob = async (req, res) => {
     const { fileName, material, options } = req.body;
     try {
         // after file upload
-        // slice file to gcode
-        const processedOptions = processSlicingOptions(options);
-        console.log("Processed options:", processedOptions);
-        const [gcodeFileName, gcodeFilePath] = await sliceMeshToGcode(
-            fileName,
-            processedOptions
+        const filePath =
+            (process.env.MESH_INPUT_DIR || "meshes") + "/" + fileName;
+        const gcodeFileName = fileName.replace(/\.[^/.]+$/, ".gcode");
+        const gcodeFilePath = path.resolve(
+            process.env.GCODE_OUTPUT_DIR || "gcodes",
+            gcodeFileName
         );
-        console.log("Gcode file created:", gcodeFilePath);
+        // slice file to gcode
+        const file_extension = getFileExtension(fileName);
+        if (file_extension.toLowerCase() === ".gcode") {
+            moveFile(filePath, gcodeFilePath);
+            console.log("Gcode file moved to:", gcodeFilePath);
+        } else {
+            const processedOptions = processSlicingOptions(options);
+            const success = await sliceMeshToGcode(
+                fileName,
+                filePath,
+                gcodeFilePath,
+                processedOptions
+            );
+            console.log("Gcode file created:", gcodeFilePath);
+        }
 
         // find free printer
         const printerIp = await findFreePrinter();
@@ -76,7 +94,7 @@ const preProcess = async (req, res) => {
             return res.status(400).send({ message: "No file uploaded." });
         }
 
-        const allowed_extensions = [".stl", ".3mf"];
+        const allowed_extensions = [".stl", ".3mf", ".gcode"];
         const preCheckResult = checkFileExtensions(
             file.originalname,
             allowed_extensions

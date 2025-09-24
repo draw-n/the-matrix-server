@@ -8,13 +8,17 @@ const fs = require("fs");
  * @returns
  */
 const checkFileExtensions = (fileName, allowed_extensions) => {
-    const file_extension = fileName.slice(fileName.lastIndexOf("."));
+    const file_extension = getFileExtension(fileName);
     if (!allowed_extensions.includes(file_extension.toLowerCase())) {
         console.log(file_extension);
         return false;
     }
     return true;
 };
+
+const getFileExtension = (fileName) => {
+    return fileName.slice(fileName.lastIndexOf("."));
+}
 
 const readFile = (filePath) => {
     return fs.readFileSync(filePath);
@@ -30,4 +34,4 @@ const moveFile = (oldPath, newPath) => {
 };
 
 const delay = ms => new Promise(res => setTimeout(res, ms));
-module.exports = { checkFileExtensions, moveFile, readFile, delay };
+module.exports = { checkFileExtensions, moveFile, readFile, delay, getFileExtension };

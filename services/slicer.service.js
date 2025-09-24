@@ -1,18 +1,12 @@
 const { exec } = require("child_process");
 const path = require("path");
-const sliceMeshToGcode = (fileName, options) => {
+const sliceMeshToGcode = (fileName, filePath, outputFilePath, options) => {
     console.log("Slicing file:", fileName, "with options:", options);
     return new Promise((resolve, reject) => {
-        const filePath =
-            (process.env.MESH_INPUT_DIR || "meshes") + "/" + fileName;
-        const gcodeFileName = fileName.replace(/\.[^/.]+$/, ".gcode");
-        const finalGcodePath = path.resolve(
-            process.env.GCODE_OUTPUT_DIR || "gcodes",
-            gcodeFileName
-        );
+    
         const materialFile = "./slicer-cli/configurations/pla_config.ini";
         exec(
-            `./slicer-cli/superslicer --output "${finalGcodePath}" -g "${filePath}" --load "${materialFile}" ${options}`,
+            `./slicer-cli/superslicer --output "${outputFilePath}" -g "${filePath}" --load "${materialFile}" ${options}`,
             (error, stdout, stderr) => {
                 if (error) {
                     console.error(`exec error: ${error}`);
@@ -20,7 +14,7 @@ const sliceMeshToGcode = (fileName, options) => {
                     return;
                 }
 
-                resolve([gcodeFileName, finalGcodePath]);
+                resolve(true);
             }
         );
     });
