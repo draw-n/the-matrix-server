@@ -13,6 +13,8 @@ const {
     sendGcodeToDuet,
     getPrinterStatus,
 } = require("../services/duet.service.js");
+const path = require("path");
+
 
 /**
  * create a new print job
