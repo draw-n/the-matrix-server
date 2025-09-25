@@ -13,8 +13,9 @@ const PORT = process.env.PORT || 3001;
 
 const app = express();
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+app.use(express.json({ limit: '300mb' }));
+app.use(express.urlencoded({ extended: true, limit: '300mb' }));
+
 
 // CORS setup (adjust origin as needed)
 app.use(
