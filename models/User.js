@@ -30,7 +30,7 @@ const UserSchema = new Schema({
         /* 
             novice = never taken rapid prototyping
             proficient = taken rapid prototyping and maybe a few projects
-            expert = finished another class in digital fabrication
+            expert = "superuser", allowed certain permissions
             moderator = has edit access to issues and other things
             admin = edit access to everything, including user roles
         */
@@ -41,12 +41,15 @@ const UserSchema = new Schema({
         enum: ["undergraduate", "graduate", "faculty"],
         /*
             undergraduate - have a graduation date, when reached need to remove
-            graduate - default is no graduation date, but when set, will delete
+            graduate - have graduation date, when reached need to remove
             faculty - never deleted unless manually
         */
     },
     graduationDate: {
         type: Date,
+    },
+    departments: {
+        type: [String], // if faculty, department, if student, major(s) and minors
     },
     remotePrints: [
         {

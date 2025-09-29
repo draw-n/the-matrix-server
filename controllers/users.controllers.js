@@ -170,16 +170,48 @@ const getEmails = async (req, res) => {
     try {
         const users = await User.find();
 
-        const emails = users.map(user => user.email).join(',');
+        const emails = users.map((user) => user.email).join(",");
 
-        res.setHeader('Content-Disposition', 'attachment; filename="emails.txt"');
-        res.setHeader('Content-Type', 'text/plain');
+        res.setHeader(
+            "Content-Disposition",
+            'attachment; filename="emails.txt"'
+        );
+        res.setHeader("Content-Type", "text/plain");
         return res.status(200).send(emails);
     } catch (err) {
         return res.status(500).send({ message: err.message });
     }
 };
 
+const firstTimeSetup = async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (id) {
+            const user = await User.findById(id);
+            if (!user) {
+                return res.status(404).send({ message: "User not found." });
+            }
+            const { status, graduationYear, departments } = req.body;
+            if (!status || !departments) {
+                return res
+                    .status(400)
+                    .send({ message: "Missing required fields." });
+            }
+
+            user.status = status;
+            if (graduationYear) {
+                user.graduationDate = new Date(graduationYear, 5, 30); // June 30th of graduation year
+            }
+            user.departments = departments;
+            await user.save();
+            return res
+                .status(200)
+                .json({ message: "User updated successfully." });
+        }
+    } catch (err) {
+        return res.status(500).send({ message: err.message });
+    }
+};
 module.exports = {
     createUser,
     deleteUser,
@@ -187,4 +219,5 @@ module.exports = {
     getUser,
     getAllUsers,
     getEmails,
+    firstTimeSetup,
 };

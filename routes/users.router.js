@@ -7,13 +7,20 @@ const {
     updateUser,
     deleteUser,
     getEmails,
+    firstTimeSetup,
 } = require("../controllers/users.controllers.js");
+
+const {
+    retrieveDepartments,
+} = require("../utils/department.utils.js");
 
 const router = express.Router();
 
 router.post("/", createUser);
+router.put("/first-time/:id", firstTimeSetup);
 router.put("/:id", updateUser);
 router.get("/", getAllUsers);
+router.get("/departments", retrieveDepartments);
 router.get("/me", (req, res) => {
     if (req.isAuthenticated() && req.user) {
         // Remove password field if present

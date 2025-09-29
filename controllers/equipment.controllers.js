@@ -11,13 +11,15 @@ const { ObjectId } = mongoose.Types; // Import ObjectId
  * @returns - response details (with status)
  */
 const createEquipment = async (req, res) => {
-    const { name, category, description, routePath } = req.body;
+    const { name, category, description, routePath, ipUrl, headline } = req.body;
 
     try {
         if (name && category && description && routePath) {
             let equipment = new Equipment({
                 _id: new ObjectId(),
                 name,
+                ipUrl,
+                headline,
                 category: ObjectId.createFromHexString(category),
                 routePath,
                 description,
@@ -124,7 +126,9 @@ const updateStatus = async (req, res) => {
             }
 
             if (equipment.ipUrl) {
-                await axios.get(`http://${equipment.ipUrl}/rr_connect?password=`);
+                await axios.get(
+                    `http://${equipment.ipUrl}/rr_connect?password=`
+                );
                 const statusResponse = await axios.get(
                     `http://${equipment.ipUrl}/rr_model?key=state.status`
                 );
@@ -134,7 +138,7 @@ const updateStatus = async (req, res) => {
                 switch (result) {
                     case "disconnected":
                     case "off":
-                        finalStatus = "offline"
+                        finalStatus = "offline";
                         break;
                     case "pausing":
                     case "paused":
@@ -147,19 +151,19 @@ const updateStatus = async (req, res) => {
                     case "simulating":
                     case "changingTool":
                     case "processing":
-                        finalStatus = "busy"
+                        finalStatus = "busy";
                         break;
                     case "halted":
-                        finalStatus = "error"
+                        finalStatus = "error";
                         break;
                     case "idle":
-                        finalStatus = "available"
+                        finalStatus = "available";
                     default:
                         break;
                 }
 
                 equipment = await Equipment.findByIdAndUpdate(id, {
-                    status: finalStatus
+                    status: finalStatus,
                 });
             }
             return res.status(200).json(equipment);
