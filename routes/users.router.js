@@ -8,22 +8,22 @@ const {
     deleteUser,
     getEmails,
     firstTimeSetup,
+    changePassword,
+    ensureAuthenticated
 } = require("../controllers/users.controllers.js");
 
-const {
-    retrieveDepartments,
-} = require("../utils/department.utils.js");
+const { retrieveDepartments } = require("../utils/department.utils.js");
 
 const router = express.Router();
 
 router.post("/", createUser);
-router.put("/first-time/:id", firstTimeSetup);
+router.put("/first-time", ensureAuthenticated, firstTimeSetup);
+router.put("/change-password", ensureAuthenticated, changePassword);
 router.put("/:id", updateUser);
 router.get("/", getAllUsers);
 router.get("/departments", retrieveDepartments);
 router.get("/me", (req, res) => {
     if (req.isAuthenticated() && req.user) {
-        // Remove password field if present
         const { password, ...userWithoutPassword } = req.user.toObject
             ? req.user.toObject()
             : req.user;

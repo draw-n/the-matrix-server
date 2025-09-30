@@ -183,9 +183,10 @@ const getEmails = async (req, res) => {
     }
 };
 
+
 const firstTimeSetup = async (req, res) => {
     try {
-        const { id } = req.params;
+        const { id } = req.user; // `req.user` is set by Passport
         if (id) {
             const user = await User.findById(id);
             if (!user) {
@@ -212,6 +213,50 @@ const firstTimeSetup = async (req, res) => {
         return res.status(500).send({ message: err.message });
     }
 };
+
+const changePassword = async (req, res) => {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+        return res
+            .status(400)
+            .json({ message: "Both current and new passwords are required." });
+    }
+    try {
+        const user = await User.findById(req.user.id).select("+password"); // `req.user` is set by Passport
+        if (!user) {
+            return res.status(404).json({ message: "User not found." });
+        }
+
+        const isMatch = await user.comparePassword(currentPassword);
+        if (!isMatch) {
+            return res
+                .status(400)
+                .json({ message: "Current password is incorrect." });
+        }
+
+        await user.setPassword(newPassword);
+        await user.save();
+
+        req.login(user, (err) => {
+            if (err) {
+                return res.status(500).json({ message: "Session update failed." });
+            }
+            res.status(200).json({ message: "Password updated successfully." });
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Something went wrong." });
+    }
+};
+
+const ensureAuthenticated = (req, res, next) => {
+  if (req.isAuthenticated()) {
+    return next();
+  }
+  return res.status(401).json({ message: 'Unauthorized' });
+}
+
+
 module.exports = {
     createUser,
     deleteUser,
@@ -220,4 +265,6 @@ module.exports = {
     getAllUsers,
     getEmails,
     firstTimeSetup,
+    changePassword,
+    ensureAuthenticated
 };
