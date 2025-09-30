@@ -27,9 +27,9 @@ router.get("/me", (req, res) => {
         const { password, ...userWithoutPassword } = req.user.toObject
             ? req.user.toObject()
             : req.user;
-        res.json({ user: userWithoutPassword });
+        return res.status(200).json({ user: userWithoutPassword });
     } else {
-        res.json({ user: null });
+        return res.status(401).json({ user: null });
     }
 });
 router.get("/emails", getEmails);
@@ -59,7 +59,7 @@ router.post("/logout", (req, res) => {
         if (err) return res.status(500).json({ message: "Logout failed" });
         req.session?.destroy(() => {
             res.clearCookie("connect.sid");
-            res.json({ message: "Logged out" });
+            return res.status(200).json({ message: "Logged out" });
         });
     });
 });
