@@ -151,7 +151,8 @@ const getAllUsers = async (req, res) => {
     try {
         let filter = {};
         if (access) {
-            filter.access = new RegExp(access, "i");
+            const accessArray = access.split(",").map(a => a.trim());
+            filter.access = { $in: accessArray };
         }
         const user = await User.find(filter).sort({ firstName: 1 });
         return res.status(200).json(user);
