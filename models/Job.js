@@ -1,3 +1,7 @@
+const mongoose = require("mongoose");
+const { Schema } = mongoose;
+const { ObjectId } = Schema.Types;
+
 const JobSchema = new Schema({
     _id: {
         type: ObjectId,
