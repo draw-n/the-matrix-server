@@ -2,7 +2,7 @@ const express = require("express");
 const multer = require("multer");
 const router = express.Router();
 
-const { createJob, preProcess } = require("../controllers/jobs.controllers.js");
+const { createJob, preProcess, sendJob } = require("../controllers/jobs.controllers.js");
 
 const storage = multer.diskStorage({
     destination: function (req, file, callback) {
@@ -18,5 +18,6 @@ const upload = multer({ storage: storage });
 
 router.post("/pre-process", upload.single("file"), preProcess);
 router.post("/", createJob);
+router.post("/:printerIp/ready", sendJob);
 
 module.exports = router;

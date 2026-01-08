@@ -12,9 +12,11 @@ const {
     connectToDuet,
     sendGcodeToDuet,
     getPrinterStatus,
+    sendMessageToDuet,
 } = require("../services/duet.service.js");
 const path = require("path");
-
+const Equipment = require("../models/Equipment.js");
+const Job = require("../models/Job.js");
 
 /**
  * create a new print job
@@ -24,7 +26,7 @@ const path = require("path");
  */
 const createJob = async (req, res) => {
     // request needs to contain filename, may have options
-    const { fileName, material, options } = req.body;
+    const { fileName, material, options, userId } = req.body;
     try {
         // after file upload
         const filePath =
@@ -50,9 +52,40 @@ const createJob = async (req, res) => {
             console.log("Gcode file created:", gcodeFilePath);
         }
 
-        // find free printer
-        const printerIp = await findFreePrinter();
-        // connect to printer
+        const printer = await Equipment.findOne({ ipUrl: "10.68.1.176" });
+
+        const job = new Job({
+            equipmentId: printer._id,
+            userId: userId,
+            gcodeFileName: gcodeFileName,
+            status: "queued",
+        });
+        await job.save();
+        return res.status(201).json({ message: "Job created successfully." });
+    } catch (err) {
+        console.error(err.message);
+        return res.status(500).send({
+            message: "Error when creating new job.",
+            error: err.message,
+        });
+    }
+};
+
+const sendJob = async (req, res) => {
+    try {
+        const { printerIp } = req.params;
+        const equipment = await Equipment.findOne({ ipUrl: printerIp });
+        if (!equipment) {
+            return res.status(404).json({ message: "Equipment not found." });
+        }
+        const jobs = await Job.find({
+            equipmentId: equipment._id,
+            status: "queued",
+        }).sort({ createdAt: 1 });
+        if (jobs.length === 0) {
+            return res.status(404).json({ message: "No queued jobs found." });
+        }
+
         const connect = await connectToDuet(printerIp);
         console.log("Connected to printer:", connect);
         const status = await getPrinterStatus(printerIp);
@@ -62,22 +95,33 @@ const createJob = async (req, res) => {
                 .status(400)
                 .json({ message: "No free printer available." });
         }
+
+        const message = await sendMessageToDuet(printerIp);
+        console.log("Message sent to printer:", message);
         // upload gcode to printer
         const sendGcode = await sendGcodeToDuet(
             printerIp,
-            gcodeFileName,
-            gcodeFilePath
+            jobs[0].gcodeFileName,
+            path.resolve(
+                process.env.GCODE_OUTPUT_DIR || "gcodes",
+                jobs[0].gcodeFileName
+            )
         );
         console.log("Gcode sent to printer:", sendGcode);
         // start print
-        const starting = await startPrint(printerIp, gcodeFileName);
+        const starting = await startPrint(printerIp, jobs[0].gcodeFileName);
         console.log("Print started:", starting);
 
-        return res.status(200).json({ message: "Job created successfully." });
+        const jobId = jobs[0]._id;
+        await Job.findByIdAndUpdate(jobId, { status: "sent" });
+
+        return res
+            .status(200)
+            .json({ message: "Job sent to printer successfully." });
     } catch (err) {
         console.error(err.message);
         return res.status(500).send({
-            message: "Error when creating new job.",
+            message: "Error when sending job to printer.",
             error: err.message,
         });
     }
@@ -124,12 +168,4 @@ const preProcess = async (req, res) => {
     }
 };
 
-/**
- * looks for a free printer in the network
- * @returns - ip address of free printer
- */
-const findFreePrinter = async () => {
-    return "10.68.1.176";
-};
-
-module.exports = { createJob, preProcess };
+module.exports = { createJob, preProcess, sendJob };

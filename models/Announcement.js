@@ -8,15 +8,15 @@ const AnnouncementSchema = new Schema({
         required: true,
     },
     title: {
-        type: String,
+        type: String, // optional title
     },
     type: {
-        type: String,
+        type: String, // general label for announcement
         required: true,
         enum: ["event", "classes", "other"],
     },
     status: {
-        type: String,
+        type: String, // scheduled if pending, posted if showing to users
         enum: ["scheduled", "posted"],
         required: true,
     },

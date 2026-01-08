@@ -60,6 +60,16 @@ const getPrinterStatus = async (printerIp) => {
     return response.data.result;
 };
 
+const sendMessageToDuet = async (printerIp) => {
+    const messageResponse = await axios.get(`http://${printerIp}/rr_gcode`, {
+        params: { gcode: `M291 P"Start the next print?" S2` },
+    });
+    const beepResponse = await axios.get(`http://${printerIp}/rr_gcode`, {
+        params: { gcode: `M300 S300 P1000` },
+    });
+    return messageResponse.data;
+};
+
 /**
  * disconnect from duet printer
  * @param {*} printerIp - ip address of the printer
@@ -76,4 +86,5 @@ module.exports = {
     startPrint,
     getPrinterStatus,
     disconnectFromDuet,
+    sendMessageToDuet,
 };
