@@ -17,6 +17,7 @@ const {
 const path = require("path");
 const Equipment = require("../models/Equipment.js");
 const Job = require("../models/Job.js");
+const { ObjectId } = require("mongoose").Types;
 
 /**
  * create a new print job
@@ -55,6 +56,7 @@ const createJob = async (req, res) => {
         const printer = await Equipment.findOne({ ipUrl: "10.68.1.176" });
 
         const job = new Job({
+            _id: new ObjectId(),
             equipmentId: printer._id,
             userId: userId,
             gcodeFileName: gcodeFileName,
