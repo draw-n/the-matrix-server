@@ -54,11 +54,11 @@ const createJob = async (req, res) => {
         }
 
         const printer = await Equipment.findOne({ ipUrl: "10.68.1.176" });
-
+        console.log(userId);
         const job = new Job({
             _id: new ObjectId(),
             equipmentId: printer._id,
-            userId: userId,
+            userId: ObjectId.createFromHexString(userId),
             gcodeFileName: gcodeFileName,
             status: "queued",
         });
