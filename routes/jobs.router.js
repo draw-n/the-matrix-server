@@ -18,6 +18,6 @@ const upload = multer({ storage: storage });
 
 router.post("/pre-process", upload.single("file"), preProcess);
 router.post("/", createJob);
-router.post("/:printerIp/ready", sendJob);
+router.get("/:printerIp/ready", sendJob);
 
 module.exports = router;
