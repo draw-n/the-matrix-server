@@ -7,6 +7,11 @@ const CategorySchema = new Schema({
         type: ObjectId,
         required: true,
     },
+    uuid: {
+        type: String,
+        required: true,
+        unique: true,
+    },
     name: {
         type: String,
         required: true,

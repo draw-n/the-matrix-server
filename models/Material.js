@@ -7,6 +7,11 @@ const MaterialSchema = new Schema({
         type: ObjectId,
         required: true,
     },
+    uuid: {
+        type: String,
+        required: true,
+        unique: true,
+    },
     name: {
         type: String,
         required: true,
@@ -15,8 +20,8 @@ const MaterialSchema = new Schema({
         type: String,
         required: true,
     },
-    category: {
-        type: ObjectId,
+    categoryId: {
+        type: String,
         required: true,
         ref: "Category"
     },
@@ -45,4 +50,4 @@ const MaterialSchema = new Schema({
     //}
 });
 
-module.exports = Material = mongoose.model("material", MaterialSchema);
+module.exports = Material = mongoose.model("materials", MaterialSchema);

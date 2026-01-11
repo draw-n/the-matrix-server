@@ -105,7 +105,10 @@ const getAccess = async (req, res) => {
     const role = req.params?.role;
     try {
         if (role) {
-            const access = await Access.findOne({ role });
+            const access = await Access.findOne(
+                { role },
+                { projection: { _id: 0 } }
+            );
             if (!access) {
                 return res.status(404).send({ message: "Access not found." });
             }

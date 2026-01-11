@@ -2,6 +2,7 @@ const Material = require("../models/Material.js");
 var mongoose = require("mongoose");
 const { ObjectId } = mongoose.Types; // Import ObjectId
 
+const crypto = require("crypto");
 /**
  * Creates new material and saves to MongoDB.
  * @param {*} req - request details
@@ -29,6 +30,7 @@ const createMaterial = async (req, res) => {
         ) {
             let material = new Material({
                 _id: new ObjectId(),
+                uuid: crypto.randomUUID(),
                 name,
                 shortName,
                 category,

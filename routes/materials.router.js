@@ -11,9 +11,9 @@ const {
 } = require("../controllers/materials.controllers.js");
 
 router.post("/", createMaterial);
-router.put("/:id", editMaterial);
-router.get("/:id", getMaterial);
+router.put("/:uuid", editMaterial);
+router.get("/:uuid", getMaterial);
 router.get("/", getAllMaterials);
-router.delete("/:id", deleteMaterial);
+router.delete("/:uuid", deleteMaterial);
 
 module.exports = router;

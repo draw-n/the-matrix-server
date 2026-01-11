@@ -17,6 +17,7 @@ const {
 const path = require("path");
 const Equipment = require("../models/Equipment.js");
 const Job = require("../models/Job.js");
+const crypto = require("crypto");
 const { ObjectId } = require("mongoose").Types;
 
 /**
@@ -57,7 +58,8 @@ const createJob = async (req, res) => {
         console.log(userId);
         const job = new Job({
             _id: new ObjectId(),
-            equipmentId: printer._id,
+            uuid: crypto.randomUUID(),
+            equipmentId: printer.uuid,
             userId: ObjectId.createFromHexString(userId),
             gcodeFileName: gcodeFileName,
             status: "queued",
@@ -81,7 +83,7 @@ const sendJob = async (req, res) => {
             return res.status(404).json({ message: "Equipment not found." });
         }
         const jobs = await Job.find({
-            equipmentId: equipment._id,
+            equipmentId: equipment.uuid,
             status: "queued",
         }).sort({ createdAt: 1 });
         if (jobs.length === 0) {
@@ -114,7 +116,7 @@ const sendJob = async (req, res) => {
         const starting = await startPrint(printerIp, jobs[0].gcodeFileName);
         console.log("Print started:", starting);
 
-        const jobId = jobs[0]._id;
+        const jobId = jobs[0].uuid;
         await Job.findByIdAndUpdate(jobId, { status: "sent" });
 
         return res

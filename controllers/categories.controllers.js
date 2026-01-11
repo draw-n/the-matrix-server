@@ -2,7 +2,7 @@ const Category = require("../models/Category.js");
 const Equipment = require("../models/Equipment.js");
 const Material = require("../models/Material.js");
 const Issue = require("../models/Issue.js");
-
+const crypto = require("crypto");
 var randomColor = require("randomcolor");
 
 var mongoose = require("mongoose");
@@ -21,6 +21,7 @@ const createCategory = async (req, res) => {
         if (name) {
             let category = new Category({
                 _id: new ObjectId(),
+                uuid: crypto.randomUUID(),
                 name,
                 defaultIssues,
                 properties,
@@ -49,32 +50,32 @@ const createCategory = async (req, res) => {
  * @returns - response details (with status)
  */
 const deleteCategory = async (req, res) => {
-    const id = req.params?.id;
+    const uuid = req.params?.uuid;
 
     try {
-        if (id) {
-            const category = await Category.findByIdAndDelete(id);
+        if (uuid) {
+            const category = await Category.findOneAndDelete({ uuid });
             if (!category) {
                 return res.status(404).send({ message: "Category not found." });
             }
 
-            const matchingEquipment = await Equipment.find({ category: id });
-            const equipment = await Equipment.deleteMany({ category: id });
+            const matchingEquipment = await Equipment.find({ categoryId: uuid });
+            const equipment = await Equipment.deleteMany({ categoryId: uuid });
             if (equipment.deletedCount > 0) {
                 const idsToDelete = matchingEquipment.map(
-                    (equipment) => equipment._id
+                    (equipment) => equipment.uuid
                 );
                 const issues = await Issue.deleteMany({
-                    equipment: { $in: idsToDelete },
+                    equipmentId: { $in: idsToDelete },
                 });
             }
-            const material = await Material.deleteMany({ category: id });
+            const material = await Material.deleteMany({ categoryId: uuid });
 
             return res
                 .status(200)
                 .json({ message: "Successfully deleted category." });
         } else {
-            return res.status(400).send({ message: "Missing Category ID." });
+            return res.status(400).send({ message: "Missing Category UUID." });
         }
     } catch (err) {
         console.error(err.message);
@@ -92,19 +93,18 @@ const deleteCategory = async (req, res) => {
  * @returns - response details (with status)
  */
 const editCategory = async (req, res) => {
-    const id = req.params?.id;
+    const uuid = req.params?.uuid;
 
     try {
-        if (id) {
-            const category = await Category.findByIdAndUpdate(id, req.body);
-
+        if (uuid) {
+            const category = await Category.findOneAndUpdate({ uuid }, req.body, { new: true, projection: { _id: 0 } });
             if (!category) {
                 return res.status(404).send({ message: "Category not found." });
             }
 
             return res.status(200).json(category);
         } else {
-            return res.status(400).send({ message: "Missing Category ID." });
+            return res.status(400).send({ message: "Missing Category UUID." });
         }
     } catch (err) {
         console.error(err.message);
@@ -116,23 +116,23 @@ const editCategory = async (req, res) => {
 };
 
 /**
- * Retrieves a category from MongoDB based on id.
+ * Retrieves a category from MongoDB based on uuid.
  * @param {*} req - request details
  * @param {*} res - response details
  * @returns - response details (with status)
  */
 const getCategory = async (req, res) => {
-    const id = req.params?.id;
+    const uuid = req.params?.uuid;
 
     try {
-        if (id) {
-            const category = await Category.findById(id);
+        if (uuid) {
+            const category = await Category.findOne({ uuid }, { projection: { _id: 0 } });
             if (!category) {
-                return res.status(404).send({ message: "Category not found" });
+                return res.status(404).send({ message: "Category not found." });
             }
             return res.status(200).json(category);
         } else {
-            return res.status(400).send({ message: "Missing Category ID." });
+            return res.status(400).send({ message: "Missing Category UUID." });
         }
     } catch (err) {
         console.error(err.message);
@@ -150,7 +150,7 @@ const getCategory = async (req, res) => {
  */
 const getAllCategories = async (req, res) => {
     try {
-        const categories = await Category.find();
+        const categories = await Category.find({}, { projection: { _id: 0 } });
         return res.status(200).json(categories);
     } catch (err) {
         console.error(err.message);

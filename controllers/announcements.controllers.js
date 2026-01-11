@@ -1,5 +1,6 @@
 const Announcement = require("../models/Announcement.js");
 const mongoose = require("mongoose");
+const crypto = require("crypto");
 
 /**
  * Creates new announcement and saves to MongoDB.
@@ -10,11 +11,12 @@ const mongoose = require("mongoose");
 const createAnnouncement = async (req, res) => {
     const { type, description, createdBy, dateCreated, status, title } =
         req.body;
-
+    
     try {
         if (type && description && createdBy && dateCreated) {
             let announcement = new Announcement({
                 _id: new mongoose.Types.ObjectId(),
+                uuid: crypto.randomUUID(),
                 type,
                 status,
                 title,
@@ -27,7 +29,11 @@ const createAnnouncement = async (req, res) => {
 
             await announcement.save();
 
-            return res.status(200).json(announcement);
+            const announcementObj = announcement.toObject();
+
+            delete announcementObj._id;
+
+            return res.status(200).json(announcementObj);
         } else {
             return res
                 .status(400)
@@ -49,11 +55,11 @@ const createAnnouncement = async (req, res) => {
  * @returns - response details (with status)
  */
 const deleteAnnouncement = async (req, res) => {
-    const id = req.params?.id;
+    const uuid = req.params?.uuid;
 
     try {
-        if (id) {
-            const announcement = await Announcement.findByIdAndDelete(id);
+        if (uuid) {
+            const announcement = await Announcement.findOneAndDelete({ uuid }, { projection: { _id: 0 } });
             if (!announcement) {
                 return res
                     .status(404)
@@ -66,7 +72,7 @@ const deleteAnnouncement = async (req, res) => {
         } else {
             return res
                 .status(400)
-                .send({ message: "Missing Announcement ID." });
+                .send({ message: "Missing Announcement UUID." });
         }
     } catch (err) {
         console.error(err.message);
@@ -84,12 +90,12 @@ const deleteAnnouncement = async (req, res) => {
  * @returns - response details (with status)
  */
 const editAnnouncement = async (req, res) => {
-    const id = req.params?.id;
+    const uuid = req.params?.uuid;
     try {
-        if (id) {
-            const announcement = await Announcement.findByIdAndUpdate(
-                id,
-                req.body
+        if (uuid) {
+            const announcement = await Announcement.findOneAndUpdate(
+                { uuid },
+                req.body, { new: true, projection: { _id: 0 } }
             );
 
             if (!announcement) {
@@ -102,7 +108,7 @@ const editAnnouncement = async (req, res) => {
         } else {
             return res
                 .status(400)
-                .send({ message: "Missing Announcement ID." });
+                .send({ message: "Missing Announcement UUID." });
         }
     } catch (err) {
         console.error(err.message);
@@ -120,10 +126,10 @@ const editAnnouncement = async (req, res) => {
  * @returns - response details (with status)
  */
 const getAnnouncement = async (req, res) => {
-    const id = req.params?.id;
+    const uuid = req.params?.uuid;
     try {
-        if (id) {
-            const announcement = await Announcement.findById(id);
+        if (uuid) {
+            const announcement = await Announcement.findOne({ uuid }, { projection: { _id: 0 } });
             if (!announcement) {
                 return res
                     .status(404)
@@ -133,7 +139,7 @@ const getAnnouncement = async (req, res) => {
         } else {
             return res
                 .status(400)
-                .send({ message: "Missing Announcement ID." });
+                .send({ message: "Missing Announcement UUID." });
         }
     } catch (err) {
         console.error(err.message);
@@ -174,7 +180,7 @@ const getAllAnnouncements = async (req, res) => {
             filter.createdBy = new RegExp(createdBy, "i");
         }
 
-        const announcements = await Announcement.find(filter).sort({ date: 1 });
+        const announcements = await Announcement.find(filter, { projection: { _id: 0 } }).sort({ date: 1 });
         return res.status(200).json(announcements);
     } catch (err) {
         console.error(err.message);

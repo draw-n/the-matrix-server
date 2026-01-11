@@ -1,6 +1,7 @@
 const Issue = require("../models/Issue.js");
 const mongoose = require("mongoose");
 const { ObjectId } = mongoose.Types;
+const crypto = require("crypto");
 
 /**
  * Creates new issue and saves to MongoDB.
@@ -15,8 +16,10 @@ const createIssue = async (req, res) => {
         if (equipment && description && createdBy && dateCreated) {
             let issue = new Issue({
                 _id: new ObjectId(),
+                uuid: crypto.randomUUID(),
                 equipment,
                 status: "open",
+
                 description,
                 createdBy,
                 dateCreated,

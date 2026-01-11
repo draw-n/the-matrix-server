@@ -11,8 +11,8 @@ const {
 } = require("../controllers/announcements.controllers.js");
 
 router.post("/", createAnnouncement);
-router.put("/:id", editAnnouncement);
-router.get("/:id", getAnnouncement);
+router.put("/:uuid", editAnnouncement);
+router.get("/:uuid", getAnnouncement);
 router.get("/", getAllAnnouncements);
 router.delete("/:id", deleteAnnouncement);
 

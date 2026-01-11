@@ -7,8 +7,13 @@ const IssueSchema = new Schema({
         type: ObjectId,
         required: true,
     },
-    equipment: {
-        type: ObjectId,
+    uuid: {
+        type: String,
+        required: true,
+        unique: true,
+    },
+    equipmentId: {
+        type: String,
         ref: "Equipment",
         required: true,
     },
@@ -17,12 +22,15 @@ const IssueSchema = new Schema({
         enum: ["open", "in-progress", "completed"],
         required: true,
     },
+    initialDescription: {
+        type: String,
+    },
     description: {
         type: String,
         required: true,
     },
     createdBy: {
-        type: ObjectId,
+        type: String,
         ref: "User",
         required: true,
     },
@@ -30,10 +38,12 @@ const IssueSchema = new Schema({
         type: Date,
         required: true,
     },
-    assignedTo: [{
-        type: ObjectId,
-        ref: "User"
-    }],
+    assignedTo: [
+        {
+            type: String,
+            ref: "User",
+        },
+    ],
 });
 
-module.exports = Issue = mongoose.model("issue", IssueSchema);
+module.exports = Issue = mongoose.model("issues", IssueSchema);

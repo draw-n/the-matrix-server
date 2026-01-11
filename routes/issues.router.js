@@ -11,9 +11,9 @@ const {
 } = require("../controllers/issues.controllers.js");
 
 router.post("/", createIssue);
-router.put("/:id", editIssue);
-router.get("/:id", getIssue);
+router.put("/:uuid", editIssue);
+router.get("/:uuid", getIssue);
 router.get("/", getAllIssues);
-router.delete("/:id", deleteIssue);
+router.delete("/:uuid", deleteIssue);
 
 module.exports = router;
