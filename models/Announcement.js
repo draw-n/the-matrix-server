@@ -30,7 +30,7 @@ const AnnouncementSchema = new Schema({
         required: true,
     },
     createdBy: {
-        type: ObjectId,
+        type: String,
         ref: "User",
         required: true,
     },
