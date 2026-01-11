@@ -60,7 +60,7 @@ const createJob = async (req, res) => {
             _id: new ObjectId(),
             uuid: crypto.randomUUID(),
             equipmentId: printer.uuid,
-            userId: ObjectId.createFromHexString(userId),
+            userId,
             gcodeFileName: gcodeFileName,
             status: "queued",
         });
@@ -117,7 +117,7 @@ const sendJob = async (req, res) => {
         console.log("Print started:", starting);
 
         const jobId = jobs[0].uuid;
-        await Job.findByIdAndUpdate(jobId, { status: "sent" });
+        await Job.findOneAndUpdate({ uuid: jobId }, { status: "sent" });
 
         return res
             .status(200)

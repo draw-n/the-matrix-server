@@ -63,11 +63,11 @@ const createUser = async (req, res) => {
  * @returns - response details (with status)
  */
 const deleteUser = async (req, res) => {
-    const id = req.params?.id;
+    const uuid = req.params?.uuid;
 
     try {
-        if (id) {
-            const user = await User.findByIdAndDelete(id);
+        if (uuid) {
+            const user = await User.findOneAndDelete({ uuid: uuid });
             if (!user) {
                 return res.status(404).send({ message: "User not found." });
             }
@@ -93,10 +93,10 @@ const deleteUser = async (req, res) => {
  * @returns - response details (with status)
  */
 const updateUser = async (req, res) => {
-    const id = req.params?.id;
+    const uuid = req.params?.uuid;
     try {
-        if (id) {
-            const user = await User.findByIdAndUpdate(id, req.body);
+        if (uuid) {
+            const user = await User.findOneAndUpdate({ uuid: uuid }, req.body);
             if (!user) {
                 return res.status(404).send({ message: "User not found." });
             }
@@ -120,11 +120,11 @@ const updateUser = async (req, res) => {
  * @returns - response details (with status)
  */
 const getUser = async (req, res) => {
-    const id = req.params?.id;
+    const uuid = req.params?.uuid;
 
     try {
-        if (id) {
-            const user = await User.findById(id);
+        if (uuid) {
+            const user = await User.findOne({ uuid: uuid });
             if (!user) {
                 return res.status(404).send("User not found.");
             }
@@ -189,9 +189,9 @@ const getEmails = async (req, res) => {
 
 const firstTimeSetup = async (req, res) => {
     try {
-        const { id } = req.user; // `req.user` is set by Passport
-        if (id) {
-            const user = await User.findById(id);
+        const { uuid } = req.user; // `req.user` is set by Passport
+        if (uuid) {
+            const user = await User.findOne({ uuid: uuid });
             if (!user) {
                 return res.status(404).send({ message: "User not found." });
             }
@@ -225,7 +225,7 @@ const changePassword = async (req, res) => {
             .json({ message: "Both current and new passwords are required." });
     }
     try {
-        const user = await User.findById(req.user.id).select("+password"); // `req.user` is set by Passport
+        const user = await User.findOne({ uuid: req.user.uuid }).select("+password"); // `req.user` is set by Passport
         if (!user) {
             return res.status(404).json({ message: "User not found." });
         }

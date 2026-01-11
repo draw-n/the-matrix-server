@@ -12,7 +12,8 @@ const { ObjectId } = mongoose.Types; // Import ObjectId
  * @returns - response details (with status)
  */
 const createEquipment = async (req, res) => {
-    const { name, categoryId, description, routePath, ipUrl, headline } = req.body;
+    const { name, categoryId, description, routePath, ipUrl, headline } =
+        req.body;
 
     try {
         if (name && categoryId && description && routePath) {
@@ -51,17 +52,17 @@ const createEquipment = async (req, res) => {
  * @returns - response details (with status)
  */
 const deleteEquipment = async (req, res) => {
-    const id = req.params?.id;
+    const uuid = req.params?.uuid;
 
     try {
-        if (id) {
-            const equipment = await Equipment.findByIdAndDelete(id);
+        if (uuid) {
+            const equipment = await Equipment.findOneAndDelete({ uuid: uuid });
             if (!equipment) {
                 return res
                     .status(404)
                     .send({ message: "Equipment not found." });
             }
-            const issues = await Issue.deleteMany({ equipment: id });
+            const issues = await Issue.deleteMany({ equipment: uuid });
             return res
                 .status(200)
                 .send({ message: "Successfully deleted equipment." });
@@ -84,11 +85,14 @@ const deleteEquipment = async (req, res) => {
  * @returns - response details (with status)
  */
 const editEquipment = async (req, res) => {
-    const id = req.params?.id;
+    const uuid = req.params?.uuid;
 
     try {
-        if (id) {
-            const equipment = await Equipment.findByIdAndUpdate(id, req.body);
+        if (uuid) {
+            const equipment = await Equipment.findOneAndUpdate(
+                { uuid: uuid },
+                req.body
+            );
 
             if (!equipment) {
                 return res
@@ -116,11 +120,11 @@ const editEquipment = async (req, res) => {
  * @returns - response object (with status)
  */
 const updateStatus = async (req, res) => {
-    const id = req.params?.id;
+    const uuid = req.params?.uuid;
 
     try {
-        if (id) {
-            let equipment = await Equipment.findById(id);
+        if (uuid) {
+            let equipment = await Equipment.findOne({ uuid: uuid });
             if (!equipment) {
                 return res
                     .status(404)
@@ -164,9 +168,12 @@ const updateStatus = async (req, res) => {
                         break;
                 }
 
-                equipment = await Equipment.findByIdAndUpdate(id, {
-                    status: finalStatus,
-                });
+                equipment = await Equipment.findOneAndUpdate(
+                    { uuid: uuid },
+                    {
+                        status: finalStatus,
+                    }
+                );
             }
             return res.status(200).json(equipment);
         } else {
@@ -188,11 +195,11 @@ const updateStatus = async (req, res) => {
  * @returns - response details (with status)
  */
 const getEquipment = async (req, res) => {
-    const id = req.params?.id;
+    const uuid = req.params?.uuid;
 
     try {
-        if (id) {
-            const equipment = await Equipment.findById(id);
+        if (uuid) {
+            const equipment = await Equipment.findOne({ uuid: uuid });
             if (!equipment) {
                 return res
                     .status(404)
@@ -215,18 +222,14 @@ const getEquipment = async (req, res) => {
  * Gets all equipment based off a filter
  * @param {*} req - request details
  * @param {*} res - response details
- * @returns - respones details (with status)
+ * @returns - response details (with status)
  */
 const getAllEquipment = async (req, res) => {
-    const { category } = req.query;
+    const { categoryId } = req.query;
     try {
         let filter = {};
-        if (category) {
-            if (ObjectId.isValid(category)) {
-                filter.category = ObjectId.createFromHexString(category); // Convert to ObjectId
-            } else {
-                filter.category = category; // It's a string, use it as is
-            }
+        if (categoryId) {
+            filter.categoryId = categoryId; // It's a string, use it as is
         }
         const equipments = await Equipment.find(filter).sort({ name: 1 });
         return res.status(200).json(equipments);
@@ -234,7 +237,7 @@ const getAllEquipment = async (req, res) => {
         console.error(err.message);
         return res.status(500).send({
             message: "Error when retrieving all equipment.",
-            message: err.message,
+            error: err.message,
         });
     }
 };
