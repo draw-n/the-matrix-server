@@ -101,7 +101,10 @@ const updateUser = async (req, res) => {
                 return res.status(404).send({ message: "User not found." });
             }
 
-            return res.status(200).json(user);
+            const userObj = user.toObject();
+            delete userObj._id;
+
+            return res.status(200).json(userObj);
         } else {
             return res.status(400).send({ message: "Missing User ID." });
         }
@@ -124,7 +127,7 @@ const getUser = async (req, res) => {
 
     try {
         if (uuid) {
-            const user = await User.findOne({ uuid: uuid });
+            const user = await User.findOne({ uuid: uuid }, { projection: { _id: 0, password: 0 } });
             if (!user) {
                 return res.status(404).send("User not found.");
             }
@@ -156,7 +159,7 @@ const getAllUsers = async (req, res) => {
             const accessArray = access.split(",").map(a => a.trim());
             filter.access = { $in: accessArray };
         }
-        const user = await User.find(filter).sort({ firstName: 1 });
+        const user = await User.find(filter, { projection: { _id: 0, password: 0 } }).sort({ firstName: 1 });
         return res.status(200).json(user);
     } catch (err) {
         return res.status(500).send({ message: err.message });
@@ -171,7 +174,7 @@ const getAllUsers = async (req, res) => {
  */
 const getEmails = async (req, res) => {
     try {
-        const users = await User.find();
+        const users = await User.find({}, { projection: { _id: 0, password: 0 } });
 
         const emails = users.map((user) => user.email).join(",");
 
@@ -191,7 +194,7 @@ const firstTimeSetup = async (req, res) => {
     try {
         const { uuid } = req.user; // `req.user` is set by Passport
         if (uuid) {
-            const user = await User.findOne({ uuid: uuid });
+            const user = await User.findOne({ uuid: uuid }, { projection: { _id: 0, password: 0 } });
             if (!user) {
                 return res.status(404).send({ message: "User not found." });
             }

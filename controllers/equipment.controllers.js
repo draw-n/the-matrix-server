@@ -30,7 +30,11 @@ const createEquipment = async (req, res) => {
             });
             await equipment.save();
 
-            return res.status(200).json(equipment);
+            const equipmentObj = equipment.toObject();
+
+            delete equipmentObj._id;
+
+            return res.status(200).json(equipmentObj);
         } else {
             return res
                 .status(400)
@@ -100,7 +104,11 @@ const editEquipment = async (req, res) => {
                     .json({ message: "Equipment not found." });
             }
 
-            return res.status(200).json(equipment);
+            const equipmentObj = equipment.toObject();
+
+            delete equipmentObj._id;
+
+            return res.status(200).json(equipmentObj);
         } else {
             return res.status(400).send({ message: "Missing Equipment ID." });
         }
@@ -175,7 +183,10 @@ const updateStatus = async (req, res) => {
                     }
                 );
             }
-            return res.status(200).json(equipment);
+            const equipmentObj = equipment.toObject();
+
+            delete equipmentObj._id;
+            return res.status(200).json(equipmentObj);
         } else {
             return res.status(400).send({ message: "Missing Equipment ID." });
         }
@@ -199,7 +210,7 @@ const getEquipment = async (req, res) => {
 
     try {
         if (uuid) {
-            const equipment = await Equipment.findOne({ uuid: uuid });
+            const equipment = await Equipment.findOne({ uuid: uuid }, { projection: { _id: 0 } });
             if (!equipment) {
                 return res
                     .status(404)
@@ -231,7 +242,7 @@ const getAllEquipment = async (req, res) => {
         if (categoryId) {
             filter.categoryId = categoryId; // It's a string, use it as is
         }
-        const equipments = await Equipment.find(filter).sort({ name: 1 });
+        const equipments = await Equipment.find(filter, { projection: { _id: 0 } }).sort({ name: 1 });
         return res.status(200).json(equipments);
     } catch (err) {
         console.error(err.message);

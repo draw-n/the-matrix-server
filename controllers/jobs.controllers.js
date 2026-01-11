@@ -172,4 +172,28 @@ const preProcess = async (req, res) => {
     }
 };
 
-module.exports = { createJob, preProcess, sendJob };
+const getAllJobs = async (req, res) => {
+    const {userId, startDate, endDate} = req.query;
+    try {
+        let filter = {};
+        if (startDate && endDate) {
+            filter.createdAt = {
+                $gte: new Date(startDate),
+                $lte: new Date(endDate),
+            };
+        }
+        if (userId) {
+            filter.userId = userId;
+        }
+        const jobs = await Job.find(filter, { projection: { _id: 0 } }).sort({ createdAt: -1 });
+        return res.status(200).json(jobs);
+    } catch (err) {
+        console.error(err.message);
+        return res.status(500).send({
+            message: "Error when retrieving recent jobs.",
+            error: err.message,
+        });
+    }
+};
+
+module.exports = { createJob, preProcess, sendJob, getAllJobs };

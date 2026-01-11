@@ -20,7 +20,11 @@ const createAccess = async (req, res) => {
 
             await access.save();
 
-            return res.status(200).json(access);
+            const accessObj = access.toObject();
+
+            delete accessObj._id;
+
+            return res.status(200).json(accessObj);
         } else {
             return res
                 .status(400)
@@ -35,36 +39,6 @@ const createAccess = async (req, res) => {
     }
 };
 
-/**
- * Deletes an access from MongoDB
- * @param {*} req - request details
- * @param {*} res - response details
- * @returns - response details (with status)
- */
-const deleteAccess = async (req, res) => {
-    const role = req.params?.role;
-
-    try {
-        if (role) {
-            const access = await Access.findOneAndDelete({ role });
-            if (!access) {
-                return res.status(404).send({ message: "Access not found." });
-            }
-
-            return res
-                .status(200)
-                .send({ message: "Successfully deleted access." });
-        } else {
-            return res.status(400).send({ message: "Missing Access role." });
-        }
-    } catch (err) {
-        console.error(err.message);
-        return res.status(500).send({
-            message: "Error when deleting access.",
-            error: err.message,
-        });
-    }
-};
 
 /**
  * Updates an access from MongoDB
@@ -82,7 +56,11 @@ const editAccess = async (req, res) => {
                 return res.status(404).send({ message: "Access not found." });
             }
 
-            return res.status(200).json(access);
+            const accessObj = access.toObject();
+
+            delete accessObj._id;
+
+            return res.status(200).json(accessObj);
         } else {
             return res.status(400).send({ message: "Missing Access ID." });
         }
@@ -133,7 +111,7 @@ const getAccess = async (req, res) => {
  */
 const getAllAccesses = async (req, res) => {
     try {
-        const access = await Access.find();
+        const access = await Access.find({}, { projection: { _id: 0 } });
         return res.status(200).json(access);
     } catch (err) {
         console.error(err.message);
@@ -146,7 +124,6 @@ const getAllAccesses = async (req, res) => {
 
 module.exports = {
     createAccess,
-    deleteAccess,
     editAccess,
     getAccess,
     getAllAccesses,
