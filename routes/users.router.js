@@ -19,7 +19,7 @@ const router = express.Router();
 router.post("/", createUser);
 router.put("/first-time", ensureAuthenticated, firstTimeSetup);
 router.put("/change-password", ensureAuthenticated, changePassword);
-router.put("/:id", updateUser);
+router.put("/:uuid", updateUser);
 router.get("/", getAllUsers);
 router.get("/departments", retrieveDepartments);
 router.get("/me", (req, res) => {
@@ -33,8 +33,8 @@ router.get("/me", (req, res) => {
     }
 });
 router.get("/emails", getEmails);
-router.get("/:id", getUser);
-router.delete("/:id", deleteUser);
+router.get("/:uuid", getUser);
+router.delete("/:uuid", deleteUser);
 
 router.post("/register", createUser);
 router.post("/login", (req, res, next) => {

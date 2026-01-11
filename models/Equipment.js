@@ -7,12 +7,18 @@ const EquipmentSchema = new Schema({
         type: ObjectId,
         required: true,
     },
+    uuid: {
+        type: String,
+        required: true,
+        unique: true,
+    },
     name: { type: String, required: true },
     routePath: { type: String, required: true },
     headline: { type: String },
-    ipUrl: { type: String },
-    category: {
-        type: ObjectId,
+    ipUrl: { type: String }, // IP address or URL to access the equipment
+    cameraUrl: { type: String }, // URL to access a camera feed for the equipment
+    categoryId: {
+        type: String,
         required: true,
         ref: "Category",
     },

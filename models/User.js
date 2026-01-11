@@ -3,6 +3,15 @@ const bcrypt = require("bcryptjs");
 const { Schema } = mongoose;
 
 const UserSchema = new Schema({
+    _id: {
+        type: Schema.Types.ObjectId,
+        required: true,
+    },
+    uuid: {
+        type: String,
+        required: true,
+        unique: true,
+    },
     firstName: {
         type: String,
         required: true,
@@ -23,7 +32,7 @@ const UserSchema = new Schema({
     },
     access: {
         type: String,
-        require: true,
+        required: true,
         enum: ["novice", "proficient", "expert", "moderator", "admin"],
         /* 
             novice = never taken rapid prototyping
@@ -35,7 +44,7 @@ const UserSchema = new Schema({
     },
     status: {
         type: String,
-        require: true,
+        required: true,
         enum: ["undergraduate", "graduate", "faculty"],
         /*
             undergraduate - have a graduation date, when reached need to remove
@@ -49,16 +58,6 @@ const UserSchema = new Schema({
     departments: {
         type: [String], // if faculty, department, if student, major(s) and minors
     },
-    remotePrints: [
-        {
-            date: {
-                type: Date,
-            },
-            fileName: {
-                type: String,
-            },
-        },
-    ],
 });
 
 UserSchema.pre("save", async function (next) {

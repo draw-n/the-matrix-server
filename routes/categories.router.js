@@ -11,9 +11,9 @@ const {
 } = require("../controllers/categories.controllers.js");
 
 router.post("/", createCategory);
-router.put("/:id", editCategory);
-router.get("/:id", getCategory);
+router.put("/:uuid", editCategory);
+router.get("/:uuid", getCategory);
 router.get("/", getAllCategories);
-router.delete("/:id", deleteCategory);
+router.delete("/:uuid", deleteCategory);
 
 module.exports = router;

@@ -2,6 +2,7 @@ const Equipment = require("../models/Equipment.js");
 const Issue = require("../models/Issue.js");
 var axios = require("axios");
 var mongoose = require("mongoose");
+const crypto = require("crypto");
 const { ObjectId } = mongoose.Types; // Import ObjectId
 
 /**
@@ -11,16 +12,17 @@ const { ObjectId } = mongoose.Types; // Import ObjectId
  * @returns - response details (with status)
  */
 const createEquipment = async (req, res) => {
-    const { name, category, description, routePath, ipUrl, headline } = req.body;
+    const { name, categoryId, description, routePath, ipUrl, headline } = req.body;
 
     try {
-        if (name && category && description && routePath) {
+        if (name && categoryId && description && routePath) {
             let equipment = new Equipment({
                 _id: new ObjectId(),
+                uuid: crypto.randomUUID(),
                 name,
                 ipUrl,
                 headline,
-                category: ObjectId.createFromHexString(category),
+                categoryId,
                 routePath,
                 description,
                 status: "available",

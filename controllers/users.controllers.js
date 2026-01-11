@@ -1,5 +1,6 @@
 const User = require("../models/User.js");
 const Access = require("../models/Access.js");
+const crypto = require("crypto");
 /**
  * Creates a new user, likely at sign in
  * @param {*} req - request details
@@ -33,6 +34,7 @@ const createUser = async (req, res) => {
             access = accessResult.role;
         }
         user = new User({
+            uuid: crypto.randomUUID(),
             firstName,
             lastName,
             email: email.toLowerCase(),

@@ -7,21 +7,27 @@ const JobSchema = new Schema({
         type: ObjectId,
         required: true,
     },
+    uuid: {
+        type: String,
+        required: true,
+        unique: true,
+    },
     equipmentId: {
-        type: ObjectId,
+        type: String,
         required: true,
     },
     userId: {
-        type: ObjectId,
+        type: String,
         required: true,
     },
     gcodeFileName: { type: String, required: true },
     status: {
         type: String,
         enum: ["queued", "sent"],
+        required: true,
     },
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now },
 });
 
-module.exports = Job = mongoose.model("job", JobSchema);
+module.exports = Job = mongoose.model("jobs", JobSchema);

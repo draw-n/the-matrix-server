@@ -12,10 +12,10 @@ const {
 } = require("../controllers/equipment.controllers.js");
 
 router.post("/", createEquipment);
-router.put("/:id", editEquipment);
-router.get("/status/:id", updateStatus);
-router.get("/:id", getEquipment);
+router.put("/:uuid", editEquipment);
+router.get("/status/:uuid", updateStatus);
+router.get("/:uuid", getEquipment);
 router.get("/", getAllEquipment);
-router.delete("/:id", deleteEquipment);
+router.delete("/:uuid", deleteEquipment);
 
 module.exports = router;
