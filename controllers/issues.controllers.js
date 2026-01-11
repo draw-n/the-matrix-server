@@ -47,11 +47,11 @@ const createIssue = async (req, res) => {
  * @returns - response details (with status)
  */
 const deleteIssue = async (req, res) => {
-    const id = req.params?.id;
+    const uuid = req.params?.uuid;
 
     try {
-        if (id) {
-            const issue = await Issue.findByIdAndDelete(id);
+        if (uuid) {
+            const issue = await Issue.findOneAndDelete({ uuid: uuid });
             if (!issue) {
                 return res.status(404).send({ message: "Issue not found." });
             }
@@ -77,10 +77,13 @@ const deleteIssue = async (req, res) => {
  * @returns - response details (with status)
  */
 const editIssue = async (req, res) => {
-    const id = req.params?.id;
+    const uuid = req.params?.uuid;
     try {
-        if (id) {
-            const issue = await Issue.findByIdAndUpdate(id, req.body);
+        if (uuid) {
+            const issue = await Issue.findOneAndUpdate(
+                { uuid: uuid },
+                req.body
+            );
 
             if (!issue) {
                 return res.status(404).send({ message: "Issue not found." });
@@ -106,11 +109,11 @@ const editIssue = async (req, res) => {
  * @returns - response details (with status)
  */
 const getIssue = async (req, res) => {
-    const id = req.params?.id;
+    const uuid = req.params?.uuid;
 
     try {
-        if (id) {
-            const issue = await Issue.findById(id);
+        if (uuid) {
+            const issue = await Issue.findOne({ uuid: uuid });
             if (!issue) {
                 return res.status(404).send({ message: "Issue not found." });
             }
@@ -134,17 +137,13 @@ const getIssue = async (req, res) => {
  * @returns - response details (with status)
  */
 const getAllIssues = async (req, res) => {
-    const { status, equipment } = req.query;
+    const { status, equipmentId } = req.query;
 
     try {
         let filter = {};
 
-        if (equipment) {
-            if (ObjectId.isValid(equipment)) {
-                filter.equipment = ObjectId.createFromHexString(equipment); // Convert to ObjectId
-            } else {
-                filter.equipment = equipment; // It's a string, use it as is
-            }
+        if (equipmentId) {
+            filter.equipmentId = equipmentId; // It's a string, use it as is
         }
 
         if (status) {
@@ -154,8 +153,8 @@ const getAllIssues = async (req, res) => {
             };
         }
 
-        const issue = await Issue.find(filter).sort({ equipment: 1 });
-        return res.status(200).json(issue);
+        const issues = await Issue.find(filter).sort({ equipmentId: 1 });
+        return res.status(200).json(issues);
     } catch (err) {
         console.error(err.message);
         return res.status(500).send({
