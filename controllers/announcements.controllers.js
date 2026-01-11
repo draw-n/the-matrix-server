@@ -13,7 +13,7 @@ const createAnnouncement = async (req, res) => {
         req.body;
     
     try {
-        if (type && description && createdBy && dateCreated) {
+        if (type && description && createdBy && dateCreated && status) {
             let announcement = new Announcement({
                 _id: new mongoose.Types.ObjectId(),
                 uuid: crypto.randomUUID(),

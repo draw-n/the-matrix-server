@@ -19,9 +19,9 @@ const router = express.Router();
 router.post("/", createUser);
 router.put("/first-time", ensureAuthenticated, firstTimeSetup);
 router.put("/change-password", ensureAuthenticated, changePassword);
-router.put("/:uuid", updateUser);
-router.get("/", getAllUsers);
-router.get("/departments", retrieveDepartments);
+router.put("/:uuid", ensureAuthenticated, updateUser);
+router.get("/", ensureAuthenticated, getAllUsers);
+router.get("/departments", ensureAuthenticated, retrieveDepartments);
 router.get("/me", (req, res) => {
     if (req.isAuthenticated() && req.user) {
         const { password, ...userWithoutPassword } = req.user.toObject
@@ -32,9 +32,9 @@ router.get("/me", (req, res) => {
         return res.status(401).json({ user: null });
     }
 });
-router.get("/emails", getEmails);
-router.get("/:uuid", getUser);
-router.delete("/:uuid", deleteUser);
+router.get("/emails", ensureAuthenticated, getEmails);
+router.get("/:uuid", ensureAuthenticated, getUser);
+router.delete("/:uuid", ensureAuthenticated, deleteUser);
 
 router.post("/register", createUser);
 router.post("/login", (req, res, next) => {
@@ -54,7 +54,7 @@ router.post("/login", (req, res, next) => {
         });
     })(req, res, next);
 });
-router.post("/logout", (req, res) => {
+router.post("/logout", ensureAuthenticated, (req, res) => {
     req.logout(function (err) {
         if (err) return res.status(500).json({ message: "Logout failed" });
         req.session?.destroy(() => {

@@ -39,7 +39,7 @@ const AnnouncementSchema = new Schema({
         required: true,
     },
     lastUpdatedBy: {
-        type: ObjectId,
+        type: String,
         ref: "User",
         required: true,
     },

@@ -44,7 +44,7 @@ const EquipmentSchema = new Schema({
         required: true,
     },
     avatarImage: {
-        type: ObjectId,
+        type: String,
         ref: "File",
     },
 });

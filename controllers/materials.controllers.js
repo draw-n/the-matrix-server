@@ -39,7 +39,11 @@ const createMaterial = async (req, res) => {
                 remotePrintAvailable,
             });
             await material.save();
-            return res.status(200).json(material);
+
+            const materialObj = material.toObject();
+
+            delete materialObj._id;
+            return res.status(200).json(materialObj);
         } else {
             return res
                 .status(400)
@@ -103,7 +107,9 @@ const editMaterial = async (req, res) => {
                 return res.status(404).send({ message: "Material not found." });
             }
 
-            return res.status(200).json(material);
+            const materialObj = material.toObject();
+            delete materialObj._id;
+            return res.status(200).json(materialObj);
         } else {
             return res.status(400).send({ message: "Missing Material ID" });
         }
@@ -127,7 +133,7 @@ const getMaterial = async (req, res) => {
 
     try {
         if (uuid) {
-            const material = await Material.findOne({ uuid: uuid });
+            const material = await Material.findOne({ uuid: uuid }, { projection: { _id: 0 } });
             if (!material) {
                 return res.status(404).send({ message: "Material not found." });
             }
@@ -164,7 +170,7 @@ const getAllMaterials = async (req, res) => {
             filter.categoryId = categoryId; // It's a string, use it as is
         }
 
-        const material = await Material.find(filter).sort({ categoryId: 1 });
+        const material = await Material.find(filter, { projection: { _id: 0 } }).sort({ categoryId: 1 });
         return res.status(200).json(material);
     } catch (err) {
         console.error(err.message);

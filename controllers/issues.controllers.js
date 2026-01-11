@@ -25,7 +25,10 @@ const createIssue = async (req, res) => {
                 dateCreated,
             });
             await issue.save();
-            return res.status(200).json(issue);
+            const issueObj = issue.toObject();
+
+            delete issueObj._id;
+            return res.status(200).json(issueObj);
         } else {
             return res
                 .status(400)
@@ -51,7 +54,10 @@ const deleteIssue = async (req, res) => {
 
     try {
         if (uuid) {
-            const issue = await Issue.findOneAndDelete({ uuid: uuid });
+            const issue = await Issue.findOneAndDelete(
+                { uuid: uuid },
+                { projection: { _id: 0 } }
+            );
             if (!issue) {
                 return res.status(404).send({ message: "Issue not found." });
             }
@@ -89,7 +95,11 @@ const editIssue = async (req, res) => {
                 return res.status(404).send({ message: "Issue not found." });
             }
 
-            return res.status(200).json(issue);
+            const issueObj = issue.toObject();
+
+            delete issueObj._id;
+
+            return res.status(200).json(issueObj);
         } else {
             return res.status(400).send({ message: "Missing Issue ID." });
         }
@@ -113,10 +123,14 @@ const getIssue = async (req, res) => {
 
     try {
         if (uuid) {
-            const issue = await Issue.findOne({ uuid: uuid });
+            const issue = await Issue.findOne(
+                { uuid: uuid },
+                { projection: { _id: 0 } }
+            );
             if (!issue) {
                 return res.status(404).send({ message: "Issue not found." });
             }
+
             return res.status(200).json(issue);
         } else {
             return res.status(400).send({ message: "Missing Issue ID." });
@@ -153,7 +167,9 @@ const getAllIssues = async (req, res) => {
             };
         }
 
-        const issues = await Issue.find(filter).sort({ equipmentId: 1 });
+        const issues = await Issue.find(filter, {
+            projection: { _id: 0 },
+        }).sort({ equipmentId: 1 });
         return res.status(200).json(issues);
     } catch (err) {
         console.error(err.message);
