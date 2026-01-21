@@ -9,9 +9,9 @@ const {
     getEmails,
     firstTimeSetup,
     changePassword,
-    ensureAuthenticated
 } = require("../controllers/users.controllers.js");
 
+const { ensureAuthenticated } = require("../middleware/auth.js");
 const { retrieveDepartments } = require("../utils/department.utils.js");
 
 const router = express.Router();

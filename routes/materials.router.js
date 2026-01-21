@@ -9,11 +9,11 @@ const {
     getMaterial,
     getAllMaterials,
 } = require("../controllers/materials.controllers.js");
+const { ensureAuthenticated } = require("../middleware/auth.js");
 
-router.post("/", createMaterial);
-router.put("/:uuid", editMaterial);
-router.get("/:uuid", getMaterial);
-router.get("/", getAllMaterials);
-router.delete("/:uuid", deleteMaterial);
-
+router.post("/", ensureAuthenticated, createMaterial);
+router.put("/:uuid", ensureAuthenticated, editMaterial);
+router.get("/:uuid", ensureAuthenticated, getMaterial);
+router.get("/", ensureAuthenticated, getAllMaterials);
+router.delete("/:uuid", ensureAuthenticated, deleteMaterial);
 module.exports = router;

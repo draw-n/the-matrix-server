@@ -255,12 +255,6 @@ const changePassword = async (req, res) => {
     }
 };
 
-const ensureAuthenticated = (req, res, next) => {
-  if (req.isAuthenticated()) {
-    return next();
-  }
-  return res.status(401).json({ message: 'Unauthorized' });
-}
 
 
 module.exports = {
@@ -272,5 +266,4 @@ module.exports = {
     getEmails,
     firstTimeSetup,
     changePassword,
-    ensureAuthenticated
 };

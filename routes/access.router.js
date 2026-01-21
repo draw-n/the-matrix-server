@@ -9,9 +9,11 @@ const {
     getAllAccesses,
 } = require("../controllers/access.controllers.js");
 
-router.post("/", createAccess);
-router.put("/:role", editAccess);
-router.get("/:role", getAccess);
-router.get("/", getAllAccesses);
+const { ensureAuthenticated } = require("../middleware/auth.js");
+
+router.post("/", ensureAuthenticated, createAccess);
+router.put("/:role", ensureAuthenticated, editAccess);
+router.get("/:role", ensureAuthenticated, getAccess);
+router.get("/", ensureAuthenticated, getAllAccesses);
 
 module.exports = router;

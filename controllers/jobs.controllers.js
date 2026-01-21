@@ -75,6 +75,27 @@ const createJob = async (req, res) => {
     }
 };
 
+const readyMessage = async (req, res) => {
+    try {
+        const { printerIp } = req.params;
+        const equipment = await Equipment.findOne({ ipUrl: printerIp });
+        if (!equipment) {
+            return res.status(404).json({ message: "Equipment not found." });
+        }
+        const message = await sendMessageToDuet(printerIp);
+        console.log("Ready message sent to printer:", message);
+        return res
+            .status(200)
+            .json({ message: "Ready message sent to printer." });
+    } catch (err) {
+        console.error(err.message);
+        return res.status(500).send({
+            message: "Error when sending ready message to printer.",
+            error: err.message,
+        });
+    }
+};
+
 const sendJob = async (req, res) => {
     try {
         const { printerIp } = req.params;
@@ -99,9 +120,6 @@ const sendJob = async (req, res) => {
                 .status(400)
                 .json({ message: "No free printer available." });
         }
-
-        const message = await sendMessageToDuet(printerIp);
-        console.log("Message sent to printer:", message);
         // upload gcode to printer
         const sendGcode = await sendGcodeToDuet(
             printerIp,
@@ -196,4 +214,4 @@ const getAllJobs = async (req, res) => {
     }
 };
 
-module.exports = { createJob, preProcess, sendJob, getAllJobs };
+module.exports = { createJob, preProcess, sendJob, getAllJobs, readyMessage };
