@@ -10,10 +10,11 @@ const {
     getAllAnnouncements,
 } = require("../controllers/announcements.controllers.js");
 
-router.post("/", createAnnouncement);
-router.put("/:uuid", editAnnouncement);
-router.get("/:uuid", getAnnouncement);
-router.get("/", getAllAnnouncements);
-router.delete("/:id", deleteAnnouncement);
+const { ensureAuthenticated } = require("../middleware/auth.js");
 
+router.post("/", ensureAuthenticated, createAnnouncement);
+router.put("/:uuid", ensureAuthenticated, editAnnouncement);
+router.get("/:uuid", ensureAuthenticated, getAnnouncement);
+router.get("/", getAllAnnouncements);
+router.delete("/:id", ensureAuthenticated, deleteAnnouncement);
 module.exports = router;

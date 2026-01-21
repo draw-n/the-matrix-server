@@ -10,10 +10,11 @@ const {
     getAllIssues,
 } = require("../controllers/issues.controllers.js");
 
-router.post("/", createIssue);
-router.put("/:uuid", editIssue);
-router.get("/:uuid", getIssue);
-router.get("/", getAllIssues);
-router.delete("/:uuid", deleteIssue);
+const { ensureAuthenticated } = require("../middleware/auth.js");
 
+router.post("/", ensureAuthenticated, createIssue);
+router.put("/:uuid", ensureAuthenticated, editIssue);
+router.get("/:uuid", ensureAuthenticated, getIssue);
+router.get("/", ensureAuthenticated, getAllIssues);
+router.delete("/:uuid", ensureAuthenticated, deleteIssue);
 module.exports = router;

@@ -11,11 +11,13 @@ const {
     updateStatus,
 } = require("../controllers/equipment.controllers.js");
 
-router.post("/", createEquipment);
-router.put("/:uuid", editEquipment);
-router.get("/status/:uuid", updateStatus);
-router.get("/:uuid", getEquipment);
-router.get("/", getAllEquipment);
-router.delete("/:uuid", deleteEquipment);
+const { ensureAuthenticated } = require("../middleware/auth.js");
+
+router.post("/", ensureAuthenticated, createEquipment);
+router.put("/:uuid", ensureAuthenticated, editEquipment);
+router.get("/status/:uuid", ensureAuthenticated, updateStatus);
+router.get("/:uuid", ensureAuthenticated, getEquipment);
+router.get("/", ensureAuthenticated, getAllEquipment);
+router.delete("/:uuid", ensureAuthenticated, deleteEquipment);
 
 module.exports = router;

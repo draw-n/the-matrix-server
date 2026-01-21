@@ -7,7 +7,7 @@ const { readFile, delay } = require("../utils/file.utils.js");
  */
 const connectToDuet = async (printerIp) => {
     const response = await axios.get(
-        `http://${printerIp}/rr_connect?password=`
+        `http://${printerIp}/rr_connect?password=`,
     );
     return response.data;
 };
@@ -27,7 +27,7 @@ const sendGcodeToDuet = async (printerIp, fileName, filePath) => {
         {
             params: { name: `/gcodes/${fileName}` },
             headers: { "Content-Type": "application/octet-stream" },
-        }
+        },
     );
 
     return response.data;
@@ -55,7 +55,7 @@ const startPrint = async (printerIp, fileName) => {
  */
 const getPrinterStatus = async (printerIp) => {
     const response = await axios.get(
-        `http://${printerIp}/rr_model?key=state.status`
+        `http://${printerIp}/rr_model?key=state.status`,
     );
     return response.data.result;
 };
@@ -64,9 +64,12 @@ const sendMessageToDuet = async (printerIp) => {
     const messageResponse = await axios.get(`http://${printerIp}/rr_gcode`, {
         params: { gcode: `M291 P"Start the next print?" S2` },
     });
-    const beepResponse = await axios.get(`http://${printerIp}/rr_gcode`, {
-        params: { gcode: `M300 S300 P1000` },
-    });
+    for (let i = 0; i < 5; i++) {
+        await delay(1000);
+        const beepResponse = await axios.get(`http://${printerIp}/rr_gcode`, {
+            params: { gcode: `M300 S250 P2000` },
+        });
+    }
     return messageResponse.data;
 };
 
