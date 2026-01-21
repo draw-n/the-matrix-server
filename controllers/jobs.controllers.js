@@ -36,7 +36,7 @@ const createJob = async (req, res) => {
         const gcodeFileName = fileName.replace(/\.[^/.]+$/, ".gcode");
         const gcodeFilePath = path.resolve(
             process.env.GCODE_OUTPUT_DIR || "gcodes",
-            gcodeFileName
+            gcodeFileName,
         );
         // slice file to gcode
         const file_extension = getFileExtension(fileName);
@@ -49,7 +49,7 @@ const createJob = async (req, res) => {
                 fileName,
                 filePath,
                 gcodeFilePath,
-                processedOptions
+                processedOptions,
             );
             console.log("Gcode file created:", gcodeFilePath);
         }
@@ -81,6 +81,13 @@ const readyMessage = async (req, res) => {
         const equipment = await Equipment.findOne({ ipUrl: printerIp });
         if (!equipment) {
             return res.status(404).json({ message: "Equipment not found." });
+        }
+        const jobs = await Job.find({
+            equipmentId: equipment.uuid,
+            status: "queued",
+        }).sort({ createdAt: 1 });
+        if (jobs.length === 0) {
+            return res.status(404).json({ message: "No queued jobs found." });
         }
         const message = await sendMessageToDuet(printerIp);
         console.log("Ready message sent to printer:", message);
@@ -126,8 +133,8 @@ const sendJob = async (req, res) => {
             jobs[0].gcodeFileName,
             path.resolve(
                 process.env.GCODE_OUTPUT_DIR || "gcodes",
-                jobs[0].gcodeFileName
-            )
+                jobs[0].gcodeFileName,
+            ),
         );
         console.log("Gcode sent to printer:", sendGcode);
         // start print
@@ -165,7 +172,7 @@ const preProcess = async (req, res) => {
         const allowed_extensions = [".stl", ".3mf", ".gcode"];
         const preCheckResult = checkFileExtensions(
             file.originalname,
-            allowed_extensions
+            allowed_extensions,
         );
 
         if (!preCheckResult) {
@@ -191,7 +198,7 @@ const preProcess = async (req, res) => {
 };
 
 const getAllJobs = async (req, res) => {
-    const {userId, startDate, endDate} = req.query;
+    const { userId, startDate, endDate } = req.query;
     try {
         let filter = {};
         if (startDate && endDate) {
@@ -203,7 +210,9 @@ const getAllJobs = async (req, res) => {
         if (userId) {
             filter.userId = userId;
         }
-        const jobs = await Job.find(filter, { projection: { _id: 0 } }).sort({ createdAt: -1 });
+        const jobs = await Job.find(filter, { projection: { _id: 0 } }).sort({
+            createdAt: -1,
+        });
         return res.status(200).json(jobs);
     } catch (err) {
         console.error(err.message);
