@@ -5,8 +5,9 @@ const passport = require("passport");
 const MongoStore = require("connect-mongo");
 require("dotenv").config();
 require("./config/passport.js");
-
+const path = require("path");
 const connectDB = require("./config/database.js");
+const { ensureAuthenticated } = require("./middleware/auth.js");
 connectDB();
 
 const PORT = process.env.PORT || 3001;
@@ -16,8 +17,39 @@ const app = express();
 app.use(express.json({ limit: "300mb" }));
 app.use(express.urlencoded({ extended: true, limit: "300mb" }));
 
-// CORS setup (adjust origin as needed)
-app.use(cors());
+// Custom CORS middleware: credentials for trusted origin, open for others
+const TRUSTED_ORIGIN = process.env.FRONT_END_ORIGIN || "http://localhost:3000"; // Change to your frontend's URL if needed
+
+app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (origin === TRUSTED_ORIGIN) {
+        res.header("Access-Control-Allow-Origin", origin);
+        res.header("Access-Control-Allow-Credentials", "true");
+        res.header(
+            "Access-Control-Allow-Methods",
+            "GET,PUT,POST,DELETE,OPTIONS",
+        );
+        res.header(
+            "Access-Control-Allow-Headers",
+            req.headers["access-control-request-headers"] || "*",
+        );
+    } else {
+        res.header("Access-Control-Allow-Origin", "*");
+        res.header(
+            "Access-Control-Allow-Methods",
+            "GET,PUT,POST,DELETE,OPTIONS",
+        );
+        res.header(
+            "Access-Control-Allow-Headers",
+            req.headers["access-control-request-headers"] || "*",
+        );
+    }
+    // Handle preflight
+    if (req.method === "OPTIONS") {
+        return res.sendStatus(204);
+    }
+    next();
+});
 
 app.use(
     session({
@@ -31,12 +63,17 @@ app.use(
             sameSite: "lax", // or "none" if using HTTPS and cross-site
             maxAge: 1000 * 60 * 60 * 24, // 1 day
         },
-    })
+    }),
 );
 
 app.use(passport.initialize());
 app.use(passport.session()); // persistent login session
 
+app.use(
+    "/meshes",
+    ensureAuthenticated,
+    express.static(path.resolve(process.env.MESH_INPUT_DIR || "meshes")),
+);
 app.use("/jobs", require("./routes/jobs.router.js"));
 app.use("/issues", require("./routes/issues.router.js"));
 app.use("/announcements", require("./routes/announcements.router.js"));
