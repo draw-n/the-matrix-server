@@ -16,7 +16,8 @@ const {
 } = require("../services/duet.service.js");
 const {
     detectMajorFacesPython,
-} = require("../services/three.service.js");
+    rotateMeshPython,
+} = require("../services/geometry.service.js");
 const path = require("path");
 const fs = require("fs");
 const Equipment = require("../models/Equipment.js");
@@ -172,71 +173,140 @@ const preProcess = async (req, res) => {
         return res.status(400).send({ message: "No file uploaded." });
     }
 
-    const filePath = req.file.path;
+    // Normalized paths for comparison
+    const tempPath = path.resolve(req.file.path); 
+    const destinationDir = path.resolve(process.env.MESH_INPUT_DIR || "meshes");
+    const destinationPath = path.resolve(destinationDir, req.file.originalname);
 
     try {
-        // 2. Extension Check (omitted for brevity, keep your existing logic)
-        
-        // 3. Run Analysis
+        // 2. Run Analysis
         let pythonOutput;
         try {
-            pythonOutput = await detectMajorFacesPython(filePath);
+            pythonOutput = await detectMajorFacesPython(tempPath);
         } catch (err) {
-            console.error("Face detection error:", err);
+            console.error("Critical python error:", err);
             throw err;
         }
 
-        // --- FIX 1: Extract the 'faces' array from the wrapper object ---
-        // Python returns: { message: "Success", faces: [...], logFileLocation: "..." }
-        const majorFaces = pythonOutput.faces;
+        // Check for Explicit Validation Errors
+        if (pythonOutput.error_type) {
+            console.warn(`Validation Failed: ${pythonOutput.error_type}`);
+            
+            // Clean up: Only delete if it exists
+            if (fs.existsSync(tempPath)) {
+                fs.unlink(tempPath, (err) => { if(err) console.error(err); });
+            }
 
-        // 4. Validate Results
-        if (!Array.isArray(majorFaces) || majorFaces.length === 0) {
-            console.error("Face detection returned no faces.");
-            
-            // Clean up
-            fs.unlink(filePath, (err) => { if(err) console.error(err); });
-            
             return res.status(400).send({
-                message: "No major faces detected. The mesh may be too complex or lack flat surfaces.",
-                faces: [],
-                // Optional: Send the log file location back to frontend for debugging
-                debugLog: pythonOutput.logFileLocation 
+                message: pythonOutput.message || "File validation failed",
+                code: pythonOutput.error_type,
+                details: pythonOutput.details,
+                min_thickness: pythonOutput.min_thickness
             });
         }
 
-        // 5. Format & Limit Data
-        // --- FIX 2: Update Mapping to match current Python Output Schema ---
+        // --- FIXED MOVE LOGIC ---
+        // Only move if the paths are actually different
+        if (tempPath !== destinationPath) {
+            // Ensure directory exists
+            if (!fs.existsSync(destinationDir)){
+                fs.mkdirSync(destinationDir, { recursive: true });
+            }
+
+            // Copy and Delete (Move)
+            await fs.promises.copyFile(tempPath, destinationPath);
+            await fs.promises.unlink(tempPath);
+            console.log(`File moved to staging: ${destinationPath}`);
+        } else {
+            console.log(`File already in staging: ${destinationPath}`);
+        }
+
+        // 3. Standard Face Detection Logic
+        const majorFaces = pythonOutput.faces;
+
+        if (!Array.isArray(majorFaces) || majorFaces.length === 0) {
+            console.error("Face detection returned no faces.");
+            if (fs.existsSync(destinationPath)) {
+                fs.unlink(destinationPath, (err) => { if(err) console.error(err); });
+            }
+            return res.status(400).send({
+                message: "No major faces detected.",
+                faces: [],
+            });
+        }
+
+        // 4. Format & Limit Data
         const MAX_FACES = 50;
-       // ... inside preProcess map loop ...
         const result = majorFaces.slice(0, MAX_FACES).map((f, index) => ({
             id: index,
             normal: f.normal,
             centroid: f.centroid,
             ellipseCenter: f.ellipseCenter || f.centroid,
-            
-            // --- NEW: Pass the explicit axis vector ---
             ellipseAxis: f.ellipseAxis || { x: 1, y: 0, z: 0 },
-            
             bottomVertex: f.bottomVertex,
             area: f.overlapArea, 
             ellipseRadii: f.ellipseRadii || [0, 0],
-            ellipseRotation: 0, // No longer used
+            ellipseRotation: 0, 
         }));
+
         return res.status(200).send({
             message: "File pre-processed successfully.",
             faces: result,
+            fileName: req.file.originalname 
         });
 
     } catch (err) {
-        if (fs.existsSync(filePath)) {
-            fs.unlink(filePath, (err) => { if(err) console.error(err); });
+        // Cleanup: Be careful not to delete the file if it was already in the destination 
+        // and the error happened unrelated to the file moving (though usually, we want to clean up on error)
+        if (fs.existsSync(tempPath)) {
+             fs.unlink(tempPath, (err) => { if(err) console.error(err); });
         }
         
         console.error(err.message);
         return res.status(500).send({
             message: "Error when pre-processing job.",
             error: err.message,
+        });
+    }
+};
+
+/**
+ * NEW: Rotate the mesh based on selected face and overwrite the file
+ */
+const placeOnFace = async (req, res) => {
+    const { fileName, normal, centroid } = req.body;
+
+    if (!fileName || !normal) {
+        return res.status(400).json({ 
+            message: "Missing required parameters: fileName or normal" 
+        });
+    }
+
+    // --- FIX: Use path.resolve to match preProcess logic exactly ---
+    const destinationDir = process.env.MESH_INPUT_DIR || "meshes";
+    const filePath = path.resolve(destinationDir, fileName);
+
+    console.log(`[placeOnFace] Looking for file at: ${filePath}`);
+
+    try {
+        if (!fs.existsSync(filePath)) {
+             console.error(`[placeOnFace] File NOT found at: ${filePath}`);
+             return res.status(404).json({ message: "File not found on server." });
+        }
+
+        // Call the Python service to perform the rotation and overwrite the file
+        await rotateMeshPython(filePath, normal, centroid);
+
+        return res.status(200).json({ 
+            message: "Mesh aligned and saved successfully.",
+            fileName: fileName 
+        });
+
+    } catch (err) {
+        console.error("Error aligning mesh:", err);
+        return res.status(500).json({ 
+            message: "Error aligning mesh.", 
+            error: err.message 
         });
     }
 };
@@ -267,4 +337,11 @@ const getAllJobs = async (req, res) => {
     }
 };
 
-module.exports = { createJob, preProcess, sendJob, getAllJobs, readyMessage };
+module.exports = {
+    createJob,
+    preProcess,
+    sendJob,
+    getAllJobs,
+    readyMessage,
+    placeOnFace, // <--- Export the new endpoint
+};

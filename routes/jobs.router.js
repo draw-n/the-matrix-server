@@ -2,7 +2,7 @@ const express = require("express");
 const multer = require("multer");
 const router = express.Router();
 
-const { createJob, preProcess, sendJob, getAllJobs, readyMessage } = require("../controllers/jobs.controllers.js");
+const { createJob, preProcess, sendJob, getAllJobs, readyMessage, placeOnFace } = require("../controllers/jobs.controllers.js");
 const { ensureAuthenticated } = require("../middleware/auth.js");
 
 const storage = multer.diskStorage({
@@ -18,6 +18,8 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 router.post("/pre-process", ensureAuthenticated, upload.single("file"), preProcess);
+router.post("/place-on-face", ensureAuthenticated, placeOnFace);
+
 router.post("/", ensureAuthenticated, createJob);
 router.get("/", ensureAuthenticated, getAllJobs);
 // endpoints for printer to check for jobs, no authentication

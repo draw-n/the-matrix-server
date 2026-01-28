@@ -2,26 +2,12 @@ import sys
 import json
 import numpy as np
 import trimesh
-from shapely.geometry import MultiPoint, Point, Polygon
-import os
-import tempfile
+from shapely.geometry import MultiPoint, Point
+import argparse
 
-# --- LOGGING SETUP ---
-temp_dir = tempfile.gettempdir()
-LOG_FILE = os.path.join(temp_dir, "geometry_analyze.log")
-
-try:
-    if os.path.exists(LOG_FILE):
-        os.remove(LOG_FILE)
-except:
-    pass
-
-def log(msg):
-    try:
-        with open(LOG_FILE, "a", encoding="utf-8") as f:
-            f.write(str(msg) + "\n")
-    except:
-        pass
+# --- MODULE IMPORTS ---
+import validate_mesh as mesh_validator 
+import place_on_face 
 
 def to_vector3(numpy_array):
     return {
@@ -31,70 +17,108 @@ def to_vector3(numpy_array):
     }
 
 def analyze_mesh(file_path):
+    """
+    Main logic for the 'preprocess' command.
+    Analyzes the mesh for printability and detects flat faces.
+    """
     try:
-        log(f"--- STARTING ANALYSIS: {file_path} ---")
-        
         # 1. LOAD
-        # Trimesh handles .3mf automatically
-        mesh = trimesh.load(file_path, force=None) # force=None allows auto-detection
+        mesh = trimesh.load(file_path, force=None)
 
-        # 3MF files often load as a 'Scene'. We need to grab the geometry from it.
         if isinstance(mesh, trimesh.Scene):
-            log("Loaded as Scene. Dumping geometry...")
-            # If the scene has multiple parts, this merges them into one mesh
-            # which is what we want for calculating the overall bottom face.
+            if len(mesh.geometry) == 0:
+                raise Exception("Scene is empty")
             mesh = mesh.dump(concatenate=True)
+
+        # ==========================================
+        # === VALIDATION STEPS ===
+        # ==========================================
+
+        # A. Check Dimensions
+        valid_dims, msg_dims = mesh_validator.check_dimensions(mesh)
+        if not valid_dims:
+            print(json.dumps({
+                "message": "Validation Failed", 
+                "error_type": "DIMENSION_OVERFLOW",
+                "details": msg_dims,
+                "faces": []
+            }))
+            sys.exit(0)
+
+        # B. Check Body Count
+        valid_body, msg_body = mesh_validator.check_single_body(mesh)
+        if not valid_body:
+            print(json.dumps({
+                "message": "Validation Failed", 
+                "error_type": "MULTIPLE_BODIES_DETECTED",
+                "details": msg_body,
+                "faces": []
+            }))
+            sys.exit(0)
+
+        # C. Check Integrity
+        valid_integrity, msg_integrity = mesh_validator.check_integrity(mesh)
+        if not valid_integrity:
+            print(json.dumps({
+                "message": "Validation Failed",
+                "error_type": "MESH_INTEGRITY_BAD", 
+                "details": msg_integrity,
+                "faces": []
+            }))
+            sys.exit(0)
+
+        # D. Check Thickness
+        valid_thick, msg_thick, min_val = mesh_validator.check_thickness(mesh)
+        if not valid_thick:
+            print(json.dumps({
+                "message": "Validation Failed",
+                "error_type": "WALLS_TOO_THIN", 
+                "details": msg_thick,
+                "min_thickness": min_val,
+                "faces": []
+            }))
+            sys.exit(0)
+            
+
         # Get bounding box [min, max]
         bounds = mesh.bounds 
         min_coords = bounds[0]
         max_coords = bounds[1]
         
-        # Calculate Bounding Box Center (matches THREE.Box3.getCenter)
+        # Calculate Bounding Box Center
         center_x = (min_coords[0] + max_coords[0]) / 2.0
         center_y = (min_coords[1] + max_coords[1]) / 2.0
         min_z = min_coords[2]
 
-        # Apply the exact same translation: -centerX, -centerY, -minZ
+        # Apply translation
         translation = [-center_x, -center_y, -min_z]
         mesh.apply_translation(translation)
-        # --------------------------------
-
-        original_face_count = len(mesh.faces)
-        log(f"Original Faces: {original_face_count}")
         
+        original_face_count = len(mesh.faces)
 
-        # 2. AGGRESSIVE DECIMATION (The Speed Fix)
-        # If > 50k faces, we use Vertex Clustering (Fastest algorithm available)
+        # 2. AGGRESSIVE DECIMATION
         TARGET_FACES = 50000 
         
         if original_face_count > TARGET_FACES:
-            log("High-poly detected. Running Vertex Clustering...")
             try:
-                # Calculate grid size to aim for ~20k-50k faces
-                # Voxel size = Bounds / Resolution
                 bbox_size = np.linalg.norm(mesh.extents)
-                # Resolution of 64-100 usually gives 10k-50k faces
                 voxel_size = bbox_size / 64.0 
                 
-                # This is O(N) - extremely fast
                 mesh = mesh.simplify_vertex_clustering(voxel_size=voxel_size)
                 
-                # Cleanup after clustering
                 mesh.remove_degenerate_faces()
                 mesh.remove_duplicate_faces()
                 
-                log(f"Decimated to: {len(mesh.faces)} faces")
             except Exception as e:
-                log(f"Decimation failed: {e}")
-
-        # 3. Standard Cleanup (Now fast because mesh is small)
+                pass
+        # 3. Standard Cleanup
         mesh.process(validate=True)
         trimesh.repair.fix_normals(mesh)
 
         # 4. Scale & Tolerances
         extents = mesh.extents
         scale_factor = np.linalg.norm(extents)
-        HULL_DIST_TOLERANCE = scale_factor * 0.015 # Increased slightly for simplified meshes
+        HULL_DIST_TOLERANCE = scale_factor * 0.015 
         MIN_AREA = (scale_factor * 0.02) ** 2  
         
         # 5. Physics Data
@@ -105,16 +129,13 @@ def analyze_mesh(file_path):
         hull_vertices = hull.vertices
 
         # 6. Facet Detection
-        # use networkx engine if available, it's more robust
         facets = trimesh.graph.facets(mesh)
-        log(f"Found {len(facets)} potential facets.")
 
         candidates = []
 
         for i, facet_indices in enumerate(facets):
             facet_normal = mesh.face_normals[facet_indices[0]]
             
-            # Fast submesh extraction
             submesh = mesh.submesh([facet_indices], only_watertight=False, append=True)
             area = submesh.area
             
@@ -148,7 +169,6 @@ def analyze_mesh(file_path):
             try:
                 points_mp = MultiPoint(vertices_2d)
                 footprint_geom = points_mp.convex_hull
-                # Relaxed buffer for low-poly meshes
                 buffer_size = scale_factor * 0.02 
                 if not footprint_geom.buffer(buffer_size).contains(Point(com_2d)):
                     continue
@@ -178,7 +198,6 @@ def analyze_mesh(file_path):
                     r_major, r_minor = edge_1/2.0, edge_0/2.0
                     axis_2d = (obb_coords[2] - obb_coords[1]) / edge_1
 
-                # Reconstruct 3D
                 to_3d = np.linalg.inv(to_2d)
                 center_4 = [obb_center_2d[0], obb_center_2d[1], face_z_level, 1]
                 ellipse_center = np.dot(to_3d, center_4)[:3]
@@ -213,5 +232,30 @@ def analyze_mesh(file_path):
         sys.exit(1)
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2: sys.exit(1)
-    analyze_mesh(sys.argv[1])
+    parser = argparse.ArgumentParser(description="Mesh Analysis Tool")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    # 1. PREPROCESS COMMAND
+    # Usage: python geometry_analyze.py preprocess <filepath>
+    parser_preprocess = subparsers.add_parser("preprocess", help="Analyze mesh and detect faces")
+    parser_preprocess.add_argument("file_path", help="Path to the mesh file")
+
+    # 2. ROTATE COMMAND
+    # Usage: python geometry_analyze.py rotate <filepath> --normal 0 0 1
+    parser_rotate = subparsers.add_parser("rotate", help="Rotate mesh to align face with floor")
+    parser_rotate.add_argument("file_path", help="Path to the mesh file")
+    parser_rotate.add_argument("--normal", nargs=3, type=float, required=True, help="Target normal vector (x y z)")
+    # Optional: We could also accept --centroid if needed for complex rotations, but normal is usually enough for alignment
+    
+    args = parser.parse_args()
+
+    if args.command == "preprocess":
+        analyze_mesh(args.file_path)
+
+    elif args.command == "rotate":
+        success, msg = place_on_face.rotate_and_overwrite(args.file_path, args.normal)
+        if success:
+            print(json.dumps({"message": "Success", "details": msg}))
+        else:
+            print(json.dumps({"error": msg}))
+            sys.exit(1)
