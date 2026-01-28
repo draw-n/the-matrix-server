@@ -16,8 +16,28 @@ const app = express();
 app.use(express.json({ limit: "300mb" }));
 app.use(express.urlencoded({ extended: true, limit: "300mb" }));
 
-// CORS setup (adjust origin as needed)
-app.use(cors());
+
+// Custom CORS middleware: credentials for trusted origin, open for others
+const TRUSTED_ORIGIN = process.env.FRONT_END_ORIGIN || "http://localhost:3000"; // Change to your frontend's URL if needed
+
+app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (origin === TRUSTED_ORIGIN) {
+        res.header("Access-Control-Allow-Origin", origin);
+        res.header("Access-Control-Allow-Credentials", "true");
+        res.header("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS");
+        res.header("Access-Control-Allow-Headers", req.headers["access-control-request-headers"] || "*");
+    } else {
+        res.header("Access-Control-Allow-Origin", "*");
+        res.header("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS");
+        res.header("Access-Control-Allow-Headers", req.headers["access-control-request-headers"] || "*");
+    }
+    // Handle preflight
+    if (req.method === "OPTIONS") {
+        return res.sendStatus(204);
+    }
+    next();
+});
 
 app.use(
     session({

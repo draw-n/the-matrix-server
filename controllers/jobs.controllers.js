@@ -14,7 +14,11 @@ const {
     getPrinterStatus,
     sendMessageToDuet,
 } = require("../services/duet.service.js");
+const {
+    detectMajorFacesPython,
+} = require("../services/three.service.js");
 const path = require("path");
+const fs = require("fs");
 const Equipment = require("../models/Equipment.js");
 const Job = require("../models/Job.js");
 const crypto = require("crypto");
@@ -163,33 +167,73 @@ const sendJob = async (req, res) => {
  * @returns - response details (with status)
  */
 const preProcess = async (req, res) => {
+    // 1. Validate Request
+    if (!req.file) {
+        return res.status(400).send({ message: "No file uploaded." });
+    }
+
+    const filePath = req.file.path;
+
     try {
-        const file = req.file;
-        if (!file) {
-            return res.status(400).send({ message: "No file uploaded." });
+        // 2. Extension Check (omitted for brevity, keep your existing logic)
+        
+        // 3. Run Analysis
+        let pythonOutput;
+        try {
+            pythonOutput = await detectMajorFacesPython(filePath);
+        } catch (err) {
+            console.error("Face detection error:", err);
+            throw err;
         }
 
-        const allowed_extensions = [".stl", ".3mf", ".gcode"];
-        const preCheckResult = checkFileExtensions(
-            file.originalname,
-            allowed_extensions,
-        );
+        // --- FIX 1: Extract the 'faces' array from the wrapper object ---
+        // Python returns: { message: "Success", faces: [...], logFileLocation: "..." }
+        const majorFaces = pythonOutput.faces;
 
-        if (!preCheckResult) {
-            return res
-                .status(400)
-                .send({ message: "Invalid file type uploaded." });
+        // 4. Validate Results
+        if (!Array.isArray(majorFaces) || majorFaces.length === 0) {
+            console.error("Face detection returned no faces.");
+            
+            // Clean up
+            fs.unlink(filePath, (err) => { if(err) console.error(err); });
+            
+            return res.status(400).send({
+                message: "No major faces detected. The mesh may be too complex or lack flat surfaces.",
+                faces: [],
+                // Optional: Send the log file location back to frontend for debugging
+                debugLog: pythonOutput.logFileLocation 
+            });
         }
 
-        //TODO: include checking whether file exists
+        // 5. Format & Limit Data
+        // --- FIX 2: Update Mapping to match current Python Output Schema ---
+        const MAX_FACES = 50;
+       // ... inside preProcess map loop ...
+        const result = majorFaces.slice(0, MAX_FACES).map((f, index) => ({
+            id: index,
+            normal: f.normal,
+            centroid: f.centroid,
+            ellipseCenter: f.ellipseCenter || f.centroid,
+            
+            // --- NEW: Pass the explicit axis vector ---
+            ellipseAxis: f.ellipseAxis || { x: 1, y: 0, z: 0 },
+            
+            bottomVertex: f.bottomVertex,
+            area: f.overlapArea, 
+            ellipseRadii: f.ellipseRadii || [0, 0],
+            ellipseRotation: 0, // No longer used
+        }));
+        return res.status(200).send({
+            message: "File pre-processed successfully.",
+            faces: result,
+        });
 
-        // Explicitly end the response to avoid hanging
-        return res
-            .status(200)
-            .send({ message: "File pre-processed successfully." });
     } catch (err) {
+        if (fs.existsSync(filePath)) {
+            fs.unlink(filePath, (err) => { if(err) console.error(err); });
+        }
+        
         console.error(err.message);
-        // Explicitly end the response to avoid hanging
         return res.status(500).send({
             message: "Error when pre-processing job.",
             error: err.message,
