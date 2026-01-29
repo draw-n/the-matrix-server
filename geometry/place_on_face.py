@@ -1,33 +1,38 @@
 import numpy as np
 import trimesh
 import os
+import json
+import sys
+import warnings
+
+# Suppress warnings to prevent them from polluting stdout/JSON parsing
+warnings.filterwarnings("ignore")
 
 def rotate_and_overwrite(file_path, target_normal):
     """
     Rotates the mesh so the target_normal points down (-Z),
     centers the object on the XY plane, and sits it on Z=0.
     Overwrites the original file.
-    
-    Args:
-        file_path (str): Absolute path to the mesh file.
-        target_normal (dict or list): Vector {x,y,z} or [x,y,z] of the face normal.
-    
-    Returns:
-        (bool, str): Success status and message.
     """
     try:
         # 1. Parse Input
         if isinstance(target_normal, dict):
             normal_vec = np.array([target_normal['x'], target_normal['y'], target_normal['z']])
         else:
-            normal_vec = np.array(target_normal)
+            # Ensure it's a flat numpy array even if passed as a list of lists
+            normal_vec = np.array(target_normal).flatten()
 
         # Normalize input vector
-        normal_vec = normal_vec / np.linalg.norm(normal_vec)
+        norm = np.linalg.norm(normal_vec)
+        if norm < 1e-9:
+            return False, "Invalid normal vector (length zero)"
+        normal_vec = normal_vec / norm
 
         # 2. Load Mesh
-        # Trimesh handles .stl and .3mf
-        mesh = trimesh.load(file_path, force=None)
+        if not os.path.exists(file_path):
+            return False, f"File not found: {file_path}"
+            
+        mesh = trimesh.load(file_path)
 
         # Handle Scene objects (common in .3mf) by merging them
         if isinstance(mesh, trimesh.Scene):
@@ -36,35 +41,43 @@ def rotate_and_overwrite(file_path, target_normal):
             mesh = mesh.dump(concatenate=True)
 
         # 3. Calculate Rotation
-        # We want the face normal to point DOWN (0, 0, -1) to sit on the bed
+        # We want the face normal to point DOWN (0, 0, -1)
         down_vec = np.array([0.0, 0.0, -1.0])
         
-        # trimesh.geometry.align_vectors gives us the 4x4 rotation matrix
-        # to rotate vector A to vector B
+        # align_vectors calculates the matrix to move normal_vec TO down_vec
         rotation_matrix = trimesh.geometry.align_vectors(normal_vec, down_vec)
         
         # 4. Apply Rotation
         mesh.apply_transform(rotation_matrix)
 
         # 5. Re-Center and Place on Floor (Z=0)
-        # Get the new bounding box after rotation
-        min_coords = mesh.bounds[0] # [min_x, min_y, min_z]
-        max_coords = mesh.bounds[1] # [max_x, max_y, max_z]
-        
-        # Calculate current center
-        center_x = (min_coords[0] + max_coords[0]) / 2.0
-        center_y = (min_coords[1] + max_coords[1]) / 2.0
-        min_z = min_coords[2]
+        bounds = mesh.bounds
+        center_x = (bounds[0][0] + bounds[1][0]) / 2.0
+        center_y = (bounds[0][1] + bounds[1][1]) / 2.0
+        min_z = bounds[0][2]
         
         # Translation: Move CenterXY to 0,0 and MinZ to 0
         translation = [-center_x, -center_y, -min_z]
         mesh.apply_translation(translation)
 
         # 6. Overwrite Original File
-        # Trimesh infers the format from the file extension
         mesh.export(file_path)
 
-        return True, "Mesh rotated and saved successfully"
+        # CRITICAL: Print JSON to stdout for Node.js
+        print(json.dumps({"message": "Success", "details": "Mesh rotated and saved successfully"}))
+        return True, "Success"
 
     except Exception as e:
-        return False, f"Rotation failed: {str(e)}"
+        # Send error to stderr so Node.js can catch it in the error handler
+        error_msg = f"Rotation failed: {str(e)}"
+        print(json.dumps({"error": error_msg}), file=sys.stderr)
+        return False, error_msg
+
+# This allows the script to be run directly if needed, 
+# though your main script calls the function.
+if __name__ == "__main__":
+    # If called as a standalone script for testing
+    if len(sys.argv) > 4:
+        path = sys.argv[1]
+        norm = [float(x) for x in sys.argv[2:5]]
+        rotate_and_overwrite(path, norm)

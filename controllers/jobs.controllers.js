@@ -243,7 +243,6 @@ const preProcess = async (req, res) => {
             centroid: f.centroid,
             ellipseCenter: f.ellipseCenter || f.centroid,
             ellipseAxis: f.ellipseAxis || { x: 1, y: 0, z: 0 },
-            bottomVertex: f.bottomVertex,
             area: f.overlapArea, 
             ellipseRadii: f.ellipseRadii || [0, 0],
             ellipseRotation: 0, 
