@@ -56,17 +56,16 @@ def check_integrity(mesh):
 
     return True, "Integrity Good"
 
-def check_single_body(mesh):
+def check_single_body(mesh, limit=100):
     """
-    Ensures the mesh consists of exactly one connected component.
+    Allows multiple bodies up to a limit to accommodate articulated models.
     """
-    # mesh.body_count returns the number of disjoint sub-graphs
     count = mesh.body_count
     
-    if count != 1:
-        return False, f"File contains multiple separate objects: {count} bodies detected."
-        
-    return True, "Single body detected"
+    if count > limit:
+        return False, f"Too many separate objects: {count} bodies detected. Max allowed is {limit}."
+    
+    return True, f"{count} bodies detected (Articulated/Single mesh safe)"
 
 def check_thickness(mesh, sample_count=1000):
     """

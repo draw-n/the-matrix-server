@@ -48,13 +48,13 @@ def analyze_mesh(file_path):
         # B. Check Body Count
         valid_body, msg_body = mesh_validator.check_single_body(mesh)
         if not valid_body:
-            print(json.dumps({
-                "message": "Validation Failed", 
-                "error_type": "MULTIPLE_BODIES_DETECTED",
-                "details": msg_body,
-                "faces": []
-            }))
-            sys.exit(0)
+                print(json.dumps({
+                    "message": "Validation Failed", 
+                    "error_type": "TOO_MANY_OBJECTS", # Renamed for clarity
+                    "details": msg_body,
+                    "faces": []
+                }))
+                sys.exit(0)
 
         # C. Check Integrity
         valid_integrity, msg_integrity = mesh_validator.check_integrity(mesh)
