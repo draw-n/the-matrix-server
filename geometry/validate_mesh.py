@@ -28,31 +28,43 @@ def check_dimensions(mesh):
 
     return True, "Dimensions Safe"
 
+import numpy as np
+import trimesh
+
 def check_integrity(mesh):
     """
-    Checks if the mesh is printable (watertight, valid winding, etc).
+    Checks if the mesh is printable and attempts minor repairs.
     """
-    # 1. Basic Validity Checks
-    # REPLACED broken .is_valid check with .is_empty
     if mesh.is_empty:
-        return False, "Mesh is empty (no geometry)"
-    
-    # A 3D volume needs at least 4 faces (tetrahedron) to exist
-    if len(mesh.faces) < 4:
-        return False, "Mesh has too few faces to be a printable volume"
+        return False, "Mesh is empty"
 
-    # 2. Watertight (Manifold) - Critical for printing
-    # This checks if every edge is shared by exactly two faces
+    # 1. ATTEMPT AUTO-REPAIR
+    try:
+        mesh.fill_holes()
+        mesh.process(validate=True)
+        trimesh.repair.fix_normals(mesh)
+    except Exception:
+        pass
+
+    # 2. Check Watertight status
     if not mesh.is_watertight:
-        return False, "Mesh is not watertight (contains holes)"
+        # We find 'naked edges' by counting how many faces share each unique edge.
+        # In a closed volume, every edge MUST be shared by exactly 2 faces.
+        # If an edge is shared by only 1 face, it's a hole (boundary edge).
+        
+        # edges_unique_inverse maps every edge to its index in edges_unique
+        edge_counts = np.bincount(mesh.edges_unique_inverse)
+        naked_edges = np.sum(edge_counts == 1)
+        
+        return False, f"Mesh is not watertight ({naked_edges} naked edges/holes detected)."
 
-    # 3. Winding (Inside-out normals)
+    # 3. Check for consistent winding
     if not mesh.is_winding_consistent:
-        return False, "Mesh has inconsistent normals (inside-out faces)"
+        return False, "Mesh has inconsistent normals (inside-out faces)."
 
-    # 4. Volume
+    # 4. Check for zero/negative volume
     if mesh.volume <= 0.0:
-        return False, "Mesh has zero or negative volume"
+         return False, "Mesh has no physical volume (it might be a 2D surface)."
 
     return True, "Integrity Good"
 
