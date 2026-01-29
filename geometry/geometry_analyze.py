@@ -34,50 +34,50 @@ def analyze_mesh(file_path):
         # === VALIDATION STEPS ===
         # ==========================================
 
-        # A. Check Dimensions
-        valid_dims, msg_dims = mesh_validator.check_dimensions(mesh)
-        if not valid_dims:
-            print(json.dumps({
-                "message": "Validation Failed", 
-                "error_type": "DIMENSION_OVERFLOW",
-                "details": msg_dims,
-                "faces": []
-            }))
-            sys.exit(0)
+        # # A. Check Dimensions
+        # valid_dims, msg_dims = mesh_validator.check_dimensions(mesh)
+        # if not valid_dims:
+        #     print(json.dumps({
+        #         "message": "Validation Failed", 
+        #         "error_type": "DIMENSION_OVERFLOW",
+        #         "details": msg_dims,
+        #         "faces": []
+        #     }))
+        #     sys.exit(0)
 
-        # B. Check Body Count
-        valid_body, msg_body = mesh_validator.check_single_body(mesh)
-        if not valid_body:
-                print(json.dumps({
-                    "message": "Validation Failed", 
-                    "error_type": "TOO_MANY_OBJECTS", # Renamed for clarity
-                    "details": msg_body,
-                    "faces": []
-                }))
-                sys.exit(0)
+        # # B. Check Body Count
+        # valid_body, msg_body = mesh_validator.check_single_body(mesh)
+        # if not valid_body:
+        #         print(json.dumps({
+        #             "message": "Validation Failed", 
+        #             "error_type": "TOO_MANY_OBJECTS", # Renamed for clarity
+        #             "details": msg_body,
+        #             "faces": []
+        #         }))
+        #         sys.exit(0)
 
-        # C. Check Integrity
-        valid_integrity, msg_integrity = mesh_validator.check_integrity(mesh)
-        if not valid_integrity:
-            print(json.dumps({
-                "message": "Validation Failed",
-                "error_type": "MESH_INTEGRITY_BAD", 
-                "details": msg_integrity,
-                "faces": []
-            }))
-            sys.exit(0)
+        # # C. Check Integrity
+        # valid_integrity, msg_integrity = mesh_validator.check_integrity(mesh)
+        # if not valid_integrity:
+        #     print(json.dumps({
+        #         "message": "Validation Failed",
+        #         "error_type": "MESH_INTEGRITY_BAD", 
+        #         "details": msg_integrity,
+        #         "faces": []
+        #     }))
+        #     sys.exit(0)
 
-        # D. Check Thickness
-        valid_thick, msg_thick, min_val = mesh_validator.check_thickness(mesh)
-        if not valid_thick:
-            print(json.dumps({
-                "message": "Validation Failed",
-                "error_type": "WALLS_TOO_THIN", 
-                "details": msg_thick,
-                "min_thickness": min_val,
-                "faces": []
-            }))
-            sys.exit(0)
+        # # D. Check Thickness
+        # valid_thick, msg_thick, min_val = mesh_validator.check_thickness(mesh)
+        # if not valid_thick:
+        #     print(json.dumps({
+        #         "message": "Validation Failed",
+        #         "error_type": "WALLS_TOO_THIN", 
+        #         "details": msg_thick,
+        #         "min_thickness": min_val,
+        #         "faces": []
+        #     }))
+        #     sys.exit(0)
             
 
         # Get bounding box [min, max]
