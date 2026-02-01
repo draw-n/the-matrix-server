@@ -107,7 +107,6 @@ def analyze_mesh(file_path):
                 "id": len(candidates),
                 "normal": to_vector3(normal),
                 "centroid": to_vector3(centroid),
-                "bottomVertex": to_vector3(centroid), 
                 "area": float(total_area),
                 "ellipseRadii": [float(r_major), float(r_minor)],
                 "ellipseCenter": to_vector3(centroid),
