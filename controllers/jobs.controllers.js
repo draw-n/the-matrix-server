@@ -318,21 +318,19 @@ const placeOnFace = async (req, res) => {
 };
 
 const getAllJobs = async (req, res) => {
-    const { userId, startDate, endDate, status } = req.query;
+    const { userId, status, equipmentId } = req.query;
     try {
         let filter = {};
-        if (startDate && endDate) {
-            filter.createdAt = {
-                $gte: new Date(startDate),
-                $lte: new Date(endDate),
-            };
-        }
         if (userId) {
             filter.userId = userId;
         }
 
         if (status) {
             filter.status = status;
+        }
+
+        if (equipmentId) {
+            filter.equipmentId = equipmentId;
         }
 
         const jobs = await Job.find(filter, { projection: { _id: 0 } }).sort({
