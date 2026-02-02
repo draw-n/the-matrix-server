@@ -32,7 +32,6 @@
     "path": "^0.12.7",
     "randomcolor": "^0.6.2",
     "three": "^0.182.0",
-    "three-stdlib": "^2.36.1",
-    "xmldom": "^0.6.0"
+    "three-stdlib": "^2.36.1"
   }
 }
