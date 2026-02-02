@@ -7,6 +7,7 @@ const {
     sliceMeshToGcode,
     processSlicingOptions,
 } = require("../services/slicer.service.js");
+const dayjs = require("dayjs");
 const {
     startPrint,
     connectToDuet,
@@ -174,7 +175,7 @@ const preProcess = async (req, res) => {
     }
 
     // Normalized paths for comparison
-    const tempPath = path.resolve(req.file.path); 
+    const tempPath = path.resolve(req.file.path);
     const destinationDir = path.resolve(process.env.MESH_INPUT_DIR || "meshes");
     const destinationPath = path.resolve(destinationDir, req.file.originalname);
 
@@ -191,17 +192,19 @@ const preProcess = async (req, res) => {
         // Check for Explicit Validation Errors
         if (pythonOutput.error_type) {
             console.warn(`Validation Failed: ${pythonOutput.error_type}`);
-            
+
             // Clean up: Only delete if it exists
             if (fs.existsSync(tempPath)) {
-                fs.unlink(tempPath, (err) => { if(err) console.error(err); });
+                fs.unlink(tempPath, (err) => {
+                    if (err) console.error(err);
+                });
             }
 
             return res.status(400).send({
                 message: pythonOutput.message || "File validation failed",
                 code: pythonOutput.error_type,
                 details: pythonOutput.details,
-                min_thickness: pythonOutput.min_thickness
+                min_thickness: pythonOutput.min_thickness,
             });
         }
 
@@ -209,7 +212,7 @@ const preProcess = async (req, res) => {
         // Only move if the paths are actually different
         if (tempPath !== destinationPath) {
             // Ensure directory exists
-            if (!fs.existsSync(destinationDir)){
+            if (!fs.existsSync(destinationDir)) {
                 fs.mkdirSync(destinationDir, { recursive: true });
             }
 
@@ -227,7 +230,9 @@ const preProcess = async (req, res) => {
         if (!Array.isArray(majorFaces) || majorFaces.length === 0) {
             console.error("Face detection returned no faces.");
             if (fs.existsSync(destinationPath)) {
-                fs.unlink(destinationPath, (err) => { if(err) console.error(err); });
+                fs.unlink(destinationPath, (err) => {
+                    if (err) console.error(err);
+                });
             }
             return res.status(400).send({
                 message: "No major faces detected.",
@@ -243,24 +248,25 @@ const preProcess = async (req, res) => {
             centroid: f.centroid,
             ellipseCenter: f.ellipseCenter || f.centroid,
             ellipseAxis: f.ellipseAxis || { x: 1, y: 0, z: 0 },
-            area: f.overlapArea, 
+            area: f.overlapArea,
             ellipseRadii: f.ellipseRadii || [0, 0],
-            ellipseRotation: 0, 
+            ellipseRotation: 0,
         }));
 
         return res.status(200).send({
             message: "File pre-processed successfully.",
             faces: result,
-            fileName: req.file.originalname 
+            fileName: req.file.originalname,
         });
-
     } catch (err) {
-        // Cleanup: Be careful not to delete the file if it was already in the destination 
+        // Cleanup: Be careful not to delete the file if it was already in the destination
         // and the error happened unrelated to the file moving (though usually, we want to clean up on error)
         if (fs.existsSync(tempPath)) {
-             fs.unlink(tempPath, (err) => { if(err) console.error(err); });
+            fs.unlink(tempPath, (err) => {
+                if (err) console.error(err);
+            });
         }
-        
+
         console.error(err.message);
         return res.status(500).send({
             message: "Error when pre-processing job.",
@@ -276,8 +282,8 @@ const placeOnFace = async (req, res) => {
     const { fileName, normal, centroid } = req.body;
 
     if (!fileName || !normal) {
-        return res.status(400).json({ 
-            message: "Missing required parameters: fileName or normal" 
+        return res.status(400).json({
+            message: "Missing required parameters: fileName or normal",
         });
     }
 
@@ -289,23 +295,24 @@ const placeOnFace = async (req, res) => {
 
     try {
         if (!fs.existsSync(filePath)) {
-             console.error(`[placeOnFace] File NOT found at: ${filePath}`);
-             return res.status(404).json({ message: "File not found on server." });
+            console.error(`[placeOnFace] File NOT found at: ${filePath}`);
+            return res
+                .status(404)
+                .json({ message: "File not found on server." });
         }
 
         // Call the Python service to perform the rotation and overwrite the file
         await rotateMeshPython(filePath, normal, centroid);
 
-        return res.status(200).json({ 
+        return res.status(200).json({
             message: "Mesh aligned and saved successfully.",
-            fileName: fileName 
+            fileName: fileName,
         });
-
     } catch (err) {
         console.error("Error aligning mesh:", err);
-        return res.status(500).json({ 
-            message: "Error aligning mesh.", 
-            error: err.message 
+        return res.status(500).json({
+            message: "Error aligning mesh.",
+            error: err.message,
         });
     }
 };
@@ -341,11 +348,55 @@ const getAllJobs = async (req, res) => {
     }
 };
 
+const getJobChartData = async (req, res) => {
+    const { userId } = req.query;
+    try {
+        const days = parseInt(req.query.days) || 30;
+
+        // Calculate the start date (30 days ago)
+        const startDate = dayjs().subtract(days, "day").startOf("day").toDate();
+
+        // MongoDB Example: Aggregating counts by date string
+        const stats = await Job.aggregate([
+            {
+                $match: {
+                    userId: userId ? userId : { $exists: true },
+                    createdAt: { $gte: startDate },
+                },
+            },
+            {
+                $group: {
+                    _id: {
+                        $dateToString: {
+                            format: "%Y-%m-%d",
+                            date: "$createdAt",
+                        },
+                    },
+                    count: { $sum: 1 },
+                },
+            },
+            { $sort: { _id: 1 } },
+        ]);
+
+        // Convert array to a key-value map for the frontend: { "2023-10-01": 5 }
+        const dataMap = stats.reduce((acc, curr) => {
+            acc[curr._id] = curr.count;
+            return acc;
+        }, {});
+
+        res.json(dataMap);
+    } catch (error) {
+        console.error("Chart Data Error:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+};
+
 module.exports = {
     createJob,
     preProcess,
     sendJob,
     getAllJobs,
     readyMessage,
-    placeOnFace, // <--- Export the new endpoint
+    placeOnFace, 
+    getJobChartData,
 };
