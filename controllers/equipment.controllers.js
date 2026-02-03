@@ -3,6 +3,7 @@ const Issue = require("../models/Issue.js");
 var axios = require("axios");
 var mongoose = require("mongoose");
 const crypto = require("crypto");
+const { validateUniqueField } = require("../utils/mongo.utils.js");
 const { ObjectId } = mongoose.Types; // Import ObjectId
 
 /**
@@ -12,12 +13,58 @@ const { ObjectId } = mongoose.Types; // Import ObjectId
  * @returns - response details (with status)
  */
 const createEquipment = async (req, res) => {
-    const { name, categoryId, description, routePath, ipUrl, headline } =
-        req.body;
+    const {
+        name,
+        categoryId,
+        description,
+        routePath,
+        ipUrl,
+        headline,
+        cameraUrl,
+        remotePrintAvailable,
+    } = req.body;
 
     try {
         if (name && categoryId && description && routePath) {
-            let equipment = new Equipment({
+            if (ipUrl) {
+                const isUnique = await validateUniqueField(
+                    ipUrl,
+                    "ipUrl",
+                    Equipment,
+                );
+                if (!isUnique) {
+                    return res
+                        .status(400)
+                        .send({ message: "IP URL must be unique." });
+                }
+            }
+
+            if (cameraUrl) {
+                const isUnique = await validateUniqueField(
+                    cameraUrl,
+                    "cameraUrl",
+                    Equipment,
+                );
+                if (!isUnique) {
+                    return res
+                        .status(400)
+                        .send({ message: "Camera URL must be unique." });
+                }
+            }
+
+            if (routePath) {
+                const isUnique = await validateUniqueField(
+                    routePath,
+                    "routePath",
+                    Equipment,
+                );
+                if (!isUnique) {
+                    return res
+                        .status(400)
+                        .send({ message: "Route Path must be unique." });
+                }
+            }
+            const equipment = new Equipment({
                 _id: new ObjectId(),
                 uuid: crypto.randomUUID(),
                 name,
@@ -26,6 +73,8 @@ const createEquipment = async (req, res) => {
                 categoryId,
                 routePath,
                 description,
+                cameraUrl,
+                remotePrintAvailable: remotePrintAvailable || false,
                 status: "available",
             });
             await equipment.save();
@@ -90,12 +139,54 @@ const deleteEquipment = async (req, res) => {
  */
 const editEquipment = async (req, res) => {
     const uuid = req.params?.uuid;
-
+    const { ipUrl, cameraUrl, routePath } = req.body;
     try {
         if (uuid) {
+            if (ipUrl) {
+                const isUnique = await validateUniqueField(
+                    ipUrl,
+                    "ipUrl",
+                    Equipment,
+                    uuid,
+                );
+                if (!isUnique) {
+                    return res
+                        .status(400)
+                        .send({ message: "IP URL must be unique." });
+                }
+            }
+
+            if (cameraUrl) {
+                const isUnique = await validateUniqueField(
+                    cameraUrl,
+                    "cameraUrl",
+                    Equipment,
+                    uuid,
+                );
+                if (!isUnique) {
+                    return res
+                        .status(400)
+                        .send({ message: "Camera URL must be unique." });
+                }
+            }
+
+            if (routePath) {
+                const isUnique = await validateUniqueField(
+                    routePath,
+                    "routePath",
+                    Equipment,
+                    uuid,
+                );
+                if (!isUnique) {
+                    return res
+                        .status(400)
+                        .send({ message: "Route Path must be unique." });
+                }
+            }
             const equipment = await Equipment.findOneAndUpdate(
                 { uuid: uuid },
-                req.body
+                req.body,
+                { new: true },
             );
 
             if (!equipment) {
@@ -141,10 +232,10 @@ const updateStatus = async (req, res) => {
 
             if (equipment.ipUrl) {
                 await axios.get(
-                    `http://${equipment.ipUrl}/rr_connect?password=`
+                    `http://${equipment.ipUrl}/rr_connect?password=`,
                 );
                 const statusResponse = await axios.get(
-                    `http://${equipment.ipUrl}/rr_model?key=state.status`
+                    `http://${equipment.ipUrl}/rr_model?key=state.status`,
                 );
                 const result = statusResponse.data.result;
                 let finalStatus = "offline";
@@ -180,7 +271,7 @@ const updateStatus = async (req, res) => {
                     { uuid: uuid },
                     {
                         status: finalStatus,
-                    }
+                    },
                 );
             }
             const equipmentObj = equipment.toObject();
@@ -210,7 +301,10 @@ const getEquipment = async (req, res) => {
 
     try {
         if (uuid) {
-            const equipment = await Equipment.findOne({ uuid: uuid }, { projection: { _id: 0 } });
+            const equipment = await Equipment.findOne(
+                { uuid: uuid },
+                { projection: { _id: 0 } },
+            );
             if (!equipment) {
                 return res
                     .status(404)
@@ -242,7 +336,9 @@ const getAllEquipment = async (req, res) => {
         if (categoryId) {
             filter.categoryId = categoryId; // It's a string, use it as is
         }
-        const equipments = await Equipment.find(filter, { projection: { _id: 0 } }).sort({ name: 1 });
+        const equipments = await Equipment.find(filter, {
+            projection: { _id: 0 },
+        }).sort({ name: 1 });
         return res.status(200).json(equipments);
     } catch (err) {
         console.error(err.message);

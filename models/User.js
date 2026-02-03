@@ -45,6 +45,7 @@ const UserSchema = new Schema({
     status: {
         type: String, // current status of the user
         required: true,
+        default: "undergraduate",
         enum: ["undergraduate", "graduate", "faculty"],
         /*
             undergraduate - have a graduation date, when reached need to remove
