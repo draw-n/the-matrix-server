@@ -174,6 +174,36 @@ const preProcess = async (req, res) => {
         return res.status(400).send({ message: "No file uploaded." });
     }
 
+    const fileExtension = getFileExtension(req.file.originalname);
+    const allowedExtensions = [
+        ".stl",
+        ".STL",
+        ".3mf",
+        ".3MF",
+        ".gcode",
+        ".GCODE",
+    ];
+    if (!checkFileExtensions(fileExtension, allowedExtensions)) {
+        return res.status(400).send({
+            message: `Invalid file type. Please use an allowed file type.`,
+        });
+    }
+
+    if (fileExtension.toLowerCase() === ".gcode") {
+        const filePath =
+            (process.env.MESH_INPUT_DIR || "meshes") +
+            "/" +
+            req.file.originalname;
+        const gcodeFilePath = path.resolve(
+            process.env.GCODE_OUTPUT_DIR || "gcodes",
+            req.file.originalname,
+        );
+        moveFile(req.file.path, path.resolve(filePath, gcodeFilePath));
+        return res
+            .status(200)
+            .json({ message: "GCODE file moved to staging.", gcode: true });
+    }
+
     // Normalized paths for comparison
     const tempPath = path.resolve(req.file.path);
     const destinationDir = path.resolve(process.env.MESH_INPUT_DIR || "meshes");
@@ -395,6 +425,6 @@ module.exports = {
     sendJob,
     getAllJobs,
     readyMessage,
-    placeOnFace, 
+    placeOnFace,
     getJobChartData,
 };
