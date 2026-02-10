@@ -1,5 +1,6 @@
 const { exec } = require("child_process");
 const path = require("path");
+const fs = require("fs");
 const sliceMeshToGcode = (fileName, filePath, outputFilePath, options) => {
     console.log("Slicing file:", fileName, "with options:", options);
     return new Promise((resolve, reject) => {
