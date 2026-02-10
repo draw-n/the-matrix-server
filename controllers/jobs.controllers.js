@@ -6,6 +6,7 @@ const {
 const {
     sliceMeshToGcode,
     processSlicingOptions,
+    extractGCodeMetadata,
 } = require("../services/slicer.service.js");
 const dayjs = require("dayjs");
 const {
@@ -61,12 +62,16 @@ const createJob = async (req, res) => {
         }
 
         const printer = await Equipment.findOne({ ipUrl: "10.68.1.176" });
-        console.log(userId);
+        
+        const {filamentUsedGrams, estimatedTimeSeconds} = await extractGCodeMetadata(gcodeFilePath);
+        
         const job = new Job({
             _id: new ObjectId(),
             uuid: crypto.randomUUID(),
             equipmentId: printer.uuid,
             userId,
+            filamentUsedGrams,
+            estimatedTimeSeconds,
             gcodeFileName: gcodeFileName,
             status: "queued",
         });
@@ -88,15 +93,31 @@ const readyMessage = async (req, res) => {
         if (!equipment) {
             return res.status(404).json({ message: "Equipment not found." });
         }
-        const jobs = await Job.find({
+        const queuedJobs = await Job.find({
             equipmentId: equipment.uuid,
             status: "queued",
         }).sort({ createdAt: 1 });
-        if (jobs.length === 0) {
+        if (queuedJobs.length === 0) {
             return res.status(404).json({ message: "No queued jobs found." });
         }
+
+        const printingJob = await Job.findOne({
+            equipmentId: equipment.uuid,
+            status: "printing",
+        });
+
+        if (printingJob) {
+            await printingJob.updateOne({ status: "completed" });
+        }
+
         const message = await sendMessageToDuet(printerIp);
         console.log("Ready message sent to printer:", message);
+
+        await Job.findOneAndUpdate(
+            { uuid: queuedJobs[0].uuid },
+            { status: "ready" },
+        );
+
         return res
             .status(200)
             .json({ message: "Ready message sent to printer." });
@@ -116,39 +137,32 @@ const sendJob = async (req, res) => {
         if (!equipment) {
             return res.status(404).json({ message: "Equipment not found." });
         }
-        const jobs = await Job.find({
+        const readyJob = await Job.findOne({
             equipmentId: equipment.uuid,
-            status: "queued",
-        }).sort({ createdAt: 1 });
-        if (jobs.length === 0) {
-            return res.status(404).json({ message: "No queued jobs found." });
+            status: "ready",
+        });
+        if (!readyJob) {
+            return res.status(404).json({ message: "No ready jobs found." });
         }
 
         const connect = await connectToDuet(printerIp);
         console.log("Connected to printer:", connect);
-        const status = await getPrinterStatus(printerIp);
-        console.log("Printer status:", status);
-        if (status !== "idle") {
-            return res
-                .status(400)
-                .json({ message: "No free printer available." });
-        }
         // upload gcode to printer
         const sendGcode = await sendGcodeToDuet(
             printerIp,
-            jobs[0].gcodeFileName,
+            readyJob.gcodeFileName,
             path.resolve(
                 process.env.GCODE_OUTPUT_DIR || "gcodes",
-                jobs[0].gcodeFileName,
+                readyJob.gcodeFileName,
             ),
         );
         console.log("Gcode sent to printer:", sendGcode);
         // start print
-        const starting = await startPrint(printerIp, jobs[0].gcodeFileName);
+        const starting = await startPrint(printerIp, readyJob.gcodeFileName);
         console.log("Print started:", starting);
 
-        const jobId = jobs[0].uuid;
-        await Job.findOneAndUpdate({ uuid: jobId }, { status: "sent" });
+        const jobId = readyJob.uuid;
+        await Job.findOneAndUpdate({ uuid: jobId }, { status: "printing" });
 
         return res
             .status(200)

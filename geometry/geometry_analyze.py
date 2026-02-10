@@ -4,7 +4,7 @@ import numpy as np
 import trimesh
 import argparse
 import os
-import time
+
 import place_on_face
 import validate_mesh  # <--- Import your validation file
 
@@ -16,66 +16,88 @@ def to_vector3(numpy_array):
     }
 
 def analyze_mesh(file_path):
-    start_time = time.time()
     try:
         # 1. LOAD
         mesh = trimesh.load(file_path, force='mesh')
         if isinstance(mesh, trimesh.Scene):
             mesh = mesh.dump(concatenate=True)
 
-        # 2. FAST DECIMATION (Trimesh 4.x Compatible)
-        original_face_count = len(mesh.faces)
-        TARGET_FACES = 30000 
+        # --- NEW: VALIDATION STEP ---
         
-        if original_face_count > TARGET_FACES:
-            step_start = time.time()
-            try:
-                # In 4.x, if the shortcut fails, we use the Voxel approach.
-                # This is extremely fast and 'water-tight' friendly.
-                # A pitch of 1.0mm is perfect for a 0.6mm nozzle check.
-                mesh = mesh.simplification.simplify_vertex_clustering(bin_size=1.0)
-                print(f"DEBUG: Voxel Decimation took {time.time() - step_start:.2f}s", file=sys.stderr)
-            except Exception as e:
-                # If that still fails, we check for the simplification module specifically
-                print(f"DEBUG: Decimation failed ({str(e)}), proceeding with original mesh", file=sys.stderr)
-                pass
-        # --- VALIDATION STEP ---
-        # Move Thickness check to run on even fewer samples
+        # A. Check Dimensions
         dim_ok, dim_msg = validate_mesh.check_dimensions(mesh)
         if not dim_ok:
-            # ... (keep error handling)
+            print(json.dumps({
+                "error_type": "DIMENSION_ERROR",
+                "message": dim_msg,
+                "details": "The model exceeds the printer's build volume."
+            }))
             return
 
-        # Optimization: Pass a smaller sample count to thickness
-        thick_ok, thick_msg, min_t = validate_mesh.check_thickness(mesh, sample_count=250)
-        # ... (rest of validation)
+        # B. Check Integrity (Watertight/Holes)
+        int_ok, int_msg = validate_mesh.check_integrity(mesh)
+        if not int_ok:
+            print(json.dumps({
+                "error_type": "INTEGRITY_ERROR",
+                "message": int_msg,
+                "details": "The mesh has too many holes or naked edges to print reliably."
+            }))
+            return
 
-        # --- ANALYSIS LOOP OPTIMIZATION ---
-        # Cache these outside the loop
+        # C. Check Thickness
+        thick_ok, thick_msg, min_t = validate_mesh.check_thickness(mesh)
+        if not thick_ok:
+            print(json.dumps({
+                "error_type": "THICKNESS_ERROR",
+                "message": thick_msg,
+                "details": f"Walls are too thin for a 0.6mm nozzle.",
+                "min_thickness": min_t
+            }))
+            return
+
+        # --- END OF VALIDATION ---
+
+        # 2. DECIMATION
+        original_face_count = len(mesh.faces)
+        TARGET_FACES = 30000 
+        if original_face_count > TARGET_FACES:
+            try:
+                mesh = mesh.simplify_quadratic_decimation(face_count=TARGET_FACES)
+            except:
+                pass
+
+        # 3. RE-CENTERING
+        bounds = mesh.bounds 
+        center_x = (bounds[0][0] + bounds[1][0]) / 2.0
+        center_y = (bounds[0][1] + bounds[1][1]) / 2.0
+        min_z = bounds[0][2]
+        mesh.apply_translation([-center_x, -center_y, -min_z])
+
+        # 4. PRE-CALCULATION
         face_areas = mesh.area_faces
         face_normals = mesh.face_normals
         face_centers = mesh.triangles_center
-        
-        # Use Bounding Box instead of Convex Hull for floor check (Much faster)
-        bbox_vertices = mesh.bounding_box.vertices
-        
+        hull_3d = mesh.convex_hull 
         facets_idx = trimesh.graph.facets(mesh)
         scale = np.linalg.norm(mesh.extents)
         MIN_AREA = (scale * 0.04) ** 2 
         
         candidates = []
+        
+        # 5. ANALYSIS LOOP
         for i, facet_indices in enumerate(facets_idx):
             total_area = face_areas[facet_indices].sum()
-            if total_area < MIN_AREA: continue
+            if total_area < MIN_AREA:
+                continue
 
-            normal = face_normals[facet_indices[0]]
             centroid = np.average(face_centers[facet_indices], axis=0, weights=face_areas[facet_indices])
+            normal = face_normals[facet_indices[0]]
 
-            # FAST FLOOR CHECK: Use bbox instead of hull
+            # FILTER: FLOOR PENETRATION
             to_down = trimesh.geometry.align_vectors(normal, [0, 0, -1])
             rotated_face_z = trimesh.transform_points([centroid], to_down)[0][2]
-            rotated_bbox_verts = trimesh.transform_points(bbox_vertices, to_down)
-            min_z_mesh = np.min(rotated_bbox_verts[:, 2])
+            rotated_hull_verts = trimesh.transform_points(hull_3d.vertices, to_down)
+            min_z_mesh = np.min(rotated_hull_verts[:, 2])
             
             if min_z_mesh < (rotated_face_z - (scale * 0.01)):
                 continue
