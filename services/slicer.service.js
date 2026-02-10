@@ -112,9 +112,9 @@ const extractGCodeMetadata = (filePath) => {
 
     let totalSeconds = 0;
     
-    const hours = timeMatch[1].match(/(\d+)h/);
-    const minutes = timeMatch[1].match(/(\d+)m/);
-    const seconds = timeMatch[1].match(/(\d+)s/);
+    const hours = timeMatch && timeMatch[1].match(/(\d+)h/);
+    const minutes = timeMatch && timeMatch[1].match(/(\d+)m/);
+    const seconds = timeMatch && timeMatch[1].match(/(\d+)s/);
 
     if (hours) totalSeconds += parseInt(hours[1]) * 3600;
     if (minutes) totalSeconds += parseInt(minutes[1]) * 60;
