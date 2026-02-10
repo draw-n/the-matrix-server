@@ -94,38 +94,52 @@ const readyMessage = async (req, res) => {
         if (!equipment) {
             return res.status(404).json({ message: "Equipment not found." });
         }
-        const queuedJobs = await Job.find({
+
+        // 1. Check if there's a job already in 'ready' status
+        let job = await Job.findOne({
             equipmentId: equipment.uuid,
-            status: "queued",
+            status: "ready",
         }).sort({ createdAt: 1 });
-        if (queuedJobs.length === 0) {
-            return res.status(404).json({ message: "No queued jobs found." });
+
+        // 2. If no 'ready' job, look for a 'queued' one
+        if (!job) {
+            job = await Job.findOne({
+                equipmentId: equipment.uuid,
+                status: "queued",
+            }).sort({ createdAt: 1 });
         }
 
-        const printingJob = await Job.findOne({
-            equipmentId: equipment.uuid,
-            status: "printing",
-        });
-
-        if (printingJob) {
-            await printingJob.updateOne({ status: "completed" });
+        if (!job) {
+            return res.status(200).json({ jobFound: false, message: "No jobs waiting." });
         }
 
+        // 3. Close out any previous "printing" jobs (The Chain Link)
+        await Job.updateMany(
+            { equipmentId: equipment.uuid, status: "printing" },
+            { status: "completed" }
+        );
+
+        // 4. Send the Message Box to Duet
+        // We do this every time /ready is called to ensure the user sees it
         const message = await sendMessageToDuet(printerIp);
         console.log("Ready message sent to printer:", message);
 
-        await Job.findOneAndUpdate(
-            { uuid: queuedJobs[0].uuid },
-            { status: "ready" },
-        );
+        // 5. Update status to 'ready' if it was 'queued'
+        if (job.status === "queued") {
+            job.status = "ready";
+            await job.save();
+        }
 
-        return res
-            .status(200)
-            .json({ message: "Ready message sent to printer." });
+        return res.status(200).json({ 
+            jobFound: true, 
+            status: job.status, 
+            message: "Ready message sent to printer." 
+        });
+
     } catch (err) {
         console.error(err.message);
         return res.status(500).send({
-            message: "Error when sending ready message to printer.",
+            message: "Error when processing ready message.",
             error: err.message,
         });
     }
