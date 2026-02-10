@@ -10,14 +10,14 @@ const crypto = require("crypto");
  * @returns - response details (with status)
  */
 const createIssue = async (req, res) => {
-    const { equipment, description, createdBy, dateCreated } = req.body;
+    const { equipmentId, description, createdBy, dateCreated } = req.body;
 
     try {
-        if (equipment && description && createdBy && dateCreated) {
+        if (equipmentId && description && createdBy && dateCreated) {
             let issue = new Issue({
                 _id: new ObjectId(),
                 uuid: crypto.randomUUID(),
-                equipment,
+                equipmentId,
                 status: "open",
 
                 description,
