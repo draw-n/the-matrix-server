@@ -62,9 +62,10 @@ const createJob = async (req, res) => {
         }
 
         const printer = await Equipment.findOne({ ipUrl: "10.68.1.176" });
-        
-        const {filamentUsedGrams, estimatedTimeSeconds} = await extractGCodeMetadata(gcodeFilePath);
-        
+
+        const { filamentUsedGrams, estimatedTimeSeconds } =
+            await extractGCodeMetadata(gcodeFilePath);
+
         const job = new Job({
             _id: new ObjectId(),
             uuid: crypto.randomUUID(),
@@ -391,20 +392,34 @@ const getAllJobs = async (req, res) => {
 };
 
 const getJobChartData = async (req, res) => {
-    const { userId } = req.query;
+    const { userId, days } = req.query;
     try {
-        const days = parseInt(req.query.days) || 30;
+        // 1. Explicitly check for 0 or undefined
+        // If days is undefined, null, or "0", we treat it as "all time"
+        const isAllTime = days === undefined || parseInt(days) === 0;
 
-        // Calculate the start date (30 days ago)
-        const startDate = dayjs().subtract(days, "day").startOf("day").toDate();
+        const query = {
+            userId: userId ? userId : { $exists: true },
+        };
 
-        // MongoDB Example: Aggregating counts by date string
+        // 2. Only add the date filter if it's NOT "all time"
+        // If it IS all time, we can still set a floor of 1 year as you requested
+        if (!isAllTime) {
+            const daysInt = parseInt(days);
+            query.createdAt = {
+                $gte: dayjs().subtract(daysInt, "day").startOf("day").toDate(),
+            };
+        } else {
+            // Optional: Hard floor of 1 year ago,
+            // or just comment this out to get literally everything ever.
+            query.createdAt = {
+                $gte: dayjs().subtract(1, "year").startOf("day").toDate(),
+            };
+        }
+
         const stats = await Job.aggregate([
             {
-                $match: {
-                    userId: userId ? userId : { $exists: true },
-                    createdAt: { $gte: startDate },
-                },
+                $match: query, // Use the dynamic query object
             },
             {
                 $group: {
@@ -420,7 +435,6 @@ const getJobChartData = async (req, res) => {
             { $sort: { _id: 1 } },
         ]);
 
-        // Convert array to a key-value map for the frontend: { "2023-10-01": 5 }
         const dataMap = stats.reduce((acc, curr) => {
             acc[curr._id] = curr.count;
             return acc;
@@ -433,6 +447,27 @@ const getJobChartData = async (req, res) => {
     }
 };
 
+const getFilamentUsedGrams = async (req, res) => {
+    const { userId } = req.query;
+    try {
+        const filter = { userId: userId ? userId : { $exists: true } };
+        const result = await Job.aggregate([
+            { $match: filter },
+            {
+                $group: {
+                    _id: null,
+                    totalFilamentUsed: { $sum: "$filamentUsedGrams" },
+                },
+            },
+        ]);
+
+        const totalFilamentUsed = result[0] ? result[0].totalFilamentUsed : 0;
+        return res.status(200).json({ totalFilamentUsed });
+    } catch (error) {
+        console.error("Filament Used Error:", error);
+        return res.status(500).json({ error: "Internal server error" });
+    }
+};
 module.exports = {
     createJob,
     preProcess,
@@ -441,4 +476,5 @@ module.exports = {
     readyMessage,
     placeOnFace,
     getJobChartData,
+    getFilamentUsedGrams,
 };
