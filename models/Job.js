@@ -25,9 +25,11 @@ const JobSchema = new Schema({
     gcodeFileName: { type: String, required: true }, // name of the G-code file to be printed
     status: {
         type: String, // current status of the job
-        enum: ["queued", "sent"],
+        enum: ["queued", "ready", "printing", "completed", "failed"],
         required: true,
     },
+    filamentUsedGrams: { type: Number, default: 0 }, // estimated filament used in grams
+    estimatedTimeSeconds: { type: Number, default: 0 }, // estimated print time in seconds
     createdAt: { type: Date, default: Date.now }, // date the job was created
     updatedAt: { type: Date, default: Date.now }, // date the job was last updated
 });

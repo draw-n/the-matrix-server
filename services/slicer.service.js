@@ -89,4 +89,40 @@ const processSlicingOptions = (options) => {
     return optionsString.trim();
 };
 
-module.exports = { sliceMeshToGcode, processSlicingOptions };
+const extractGCodeMetadata = (filePath) => {
+    const STATS_SIZE = 10000; // Read the last 10KB of the file
+    const fileSize = fs.statSync(filePath).size;
+    const bufferSize = Math.min(fileSize, STATS_SIZE);
+    const buffer = Buffer.alloc(bufferSize);
+
+    const fd = fs.openSync(filePath, 'r');
+    // Seek to near the end of the file
+    fs.readSync(fd, buffer, 0, bufferSize, fileSize - bufferSize);
+    fs.closeSync(fd);
+
+    const content = buffer.toString('utf-8');
+
+    // Regex patterns
+    const filamentRegex = /; filament used \[g\]\s*=\s*([\d.]+)/;
+    const timeRegex = /; estimated printing time \(normal mode\)\s*=\s*(.+)/;
+
+    const filamentMatch = content.match(filamentRegex);
+    const timeMatch = content.match(timeRegex);
+
+    let totalSeconds = 0;
+    
+    const hours = timeMatch[1].match(/(\d+)h/);
+    const minutes = timeMatch[1].match(/(\d+)m/);
+    const seconds = timeMatch[1].match(/(\d+)s/);
+
+    if (hours) totalSeconds += parseInt(hours[1]) * 3600;
+    if (minutes) totalSeconds += parseInt(minutes[1]) * 60;
+    if (seconds) totalSeconds += parseInt(seconds[1]);
+
+    return {
+        filamentUsedGrams: filamentMatch ? parseFloat(filamentMatch[1]) : null,
+        estimatedTime: totalSeconds ? totalSeconds * 2 : null
+    };
+}
+
+module.exports = { sliceMeshToGcode, processSlicingOptions, extractGCodeMetadata };
