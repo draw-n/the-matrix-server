@@ -29,6 +29,9 @@ const AnnouncementSchema = new Schema({
         type: String, // detailed description of the announcement
         required: true,
     },
+    imageName: {
+        type: String, // path to the image associated with the announcement
+    },
     createdBy: {
         type: String, // uuid of the user who created the announcement
         ref: "User",

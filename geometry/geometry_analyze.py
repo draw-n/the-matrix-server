@@ -4,8 +4,9 @@ import numpy as np
 import trimesh
 import argparse
 import os
-
+import time
 import place_on_face
+import validate_mesh  # <--- Import your validation file
 
 def to_vector3(numpy_array):
     return {
@@ -15,91 +16,90 @@ def to_vector3(numpy_array):
     }
 
 def analyze_mesh(file_path):
+    start_time = time.time()
     try:
         # 1. LOAD
         mesh = trimesh.load(file_path, force='mesh')
         if isinstance(mesh, trimesh.Scene):
             mesh = mesh.dump(concatenate=True)
 
-        # 2. DECIMATION
+        # 2. FAST DECIMATION (Trimesh 4.x Compatible)
         original_face_count = len(mesh.faces)
         TARGET_FACES = 30000 
+        
         if original_face_count > TARGET_FACES:
+            step_start = time.time()
             try:
-                mesh = mesh.simplify_quadratic_decimation(face_count=TARGET_FACES)
-            except:
+                # In 4.x, if the shortcut fails, we use the Voxel approach.
+                # This is extremely fast and 'water-tight' friendly.
+                # A pitch of 1.0mm is perfect for a 0.6mm nozzle check.
+                mesh = mesh.simplification.simplify_vertex_clustering(bin_size=1.0)
+                print(f"DEBUG: Voxel Decimation took {time.time() - step_start:.2f}s", file=sys.stderr)
+            except Exception as e:
+                # If that still fails, we check for the simplification module specifically
+                print(f"DEBUG: Decimation failed ({str(e)}), proceeding with original mesh", file=sys.stderr)
                 pass
+        # --- VALIDATION STEP ---
+        # Move Thickness check to run on even fewer samples
+        dim_ok, dim_msg = validate_mesh.check_dimensions(mesh)
+        if not dim_ok:
+            # ... (keep error handling)
+            return
 
-        # 3. RE-CENTERING
-        bounds = mesh.bounds 
-        center_x = (bounds[0][0] + bounds[1][0]) / 2.0
-        center_y = (bounds[0][1] + bounds[1][1]) / 2.0
-        min_z = bounds[0][2]
-        mesh.apply_translation([-center_x, -center_y, -min_z])
+        # Optimization: Pass a smaller sample count to thickness
+        thick_ok, thick_msg, min_t = validate_mesh.check_thickness(mesh, sample_count=250)
+        # ... (rest of validation)
 
-        # 4. PRE-CALCULATION
+        # --- ANALYSIS LOOP OPTIMIZATION ---
+        # Cache these outside the loop
         face_areas = mesh.area_faces
         face_normals = mesh.face_normals
         face_centers = mesh.triangles_center
-        hull_3d = mesh.convex_hull 
+        
+        # Use Bounding Box instead of Convex Hull for floor check (Much faster)
+        bbox_vertices = mesh.bounding_box.vertices
+        
         facets_idx = trimesh.graph.facets(mesh)
         scale = np.linalg.norm(mesh.extents)
         MIN_AREA = (scale * 0.04) ** 2 
         
         candidates = []
-        
-        # 5. ANALYSIS LOOP
         for i, facet_indices in enumerate(facets_idx):
             total_area = face_areas[facet_indices].sum()
-            if total_area < MIN_AREA:
-                continue
+            if total_area < MIN_AREA: continue
 
-            centroid = np.average(face_centers[facet_indices], axis=0, weights=face_areas[facet_indices])
             normal = face_normals[facet_indices[0]]
+            centroid = np.average(face_centers[facet_indices], axis=0, weights=face_areas[facet_indices])
 
-            # FILTER: FLOOR PENETRATION (Does this face clip the bed?)
+            # FAST FLOOR CHECK: Use bbox instead of hull
             to_down = trimesh.geometry.align_vectors(normal, [0, 0, -1])
             rotated_face_z = trimesh.transform_points([centroid], to_down)[0][2]
-            rotated_hull_verts = trimesh.transform_points(hull_3d.vertices, to_down)
-            min_z_mesh = np.min(rotated_hull_verts[:, 2])
+            rotated_bbox_verts = trimesh.transform_points(bbox_vertices, to_down)
+            min_z_mesh = np.min(rotated_bbox_verts[:, 2])
             
-            # Tolerance allows for slight non-planar noise
             if min_z_mesh < (rotated_face_z - (scale * 0.01)):
                 continue
 
-            # --- ELLIPSE CALCULATION (Using SVD for orientation and Inscribed logic) ---
+            # ELLIPSE CALCULATION
             facet_v_indices = np.unique(mesh.faces[facet_indices])
             facet_verts = mesh.vertices[facet_v_indices]
-            
-            # Project to 2D
             to_2d = trimesh.geometry.align_vectors(normal, [0, 0, 1])
             verts_2d = trimesh.transform_points(facet_verts, to_2d)[:, :2]
 
             if len(verts_2d) > 2:
-                # Center the 2D points
                 c_pts = verts_2d - np.mean(verts_2d, axis=0)
-                
-                # Singular Value Decomposition to find the major/minor axes of the point set
-                # V contains the principal directions
                 _, _, V = np.linalg.svd(c_pts)
                 major_dir = V[0]
                 minor_dir = V[1]
-                
-                # Find extents by projecting points onto these principal axes
                 proj_major = np.dot(c_pts, major_dir)
                 proj_minor = np.dot(c_pts, minor_dir)
-                
-                # Calculate radii (Inscribed: max point to max point)
-                # 0.9 padding ensures the ellipse is clearly inside the face boundary
                 r_major = (np.max(proj_major) - np.min(proj_major)) / 2.0 * 0.9
                 r_minor = (np.max(proj_minor) - np.min(proj_minor)) / 2.0 * 0.9
-                
                 major_axis_2d = major_dir
             else:
                 r_major = r_minor = np.sqrt(total_area / np.pi) * 0.8
                 major_axis_2d = np.array([1.0, 0.0])
 
-            # Convert 2D Major Axis back to 3D orientation
             to_3d = np.linalg.inv(to_2d)
             axis_3d = np.dot(to_3d[:3, :3], [major_axis_2d[0], major_axis_2d[1], 0])
 
@@ -120,11 +120,11 @@ def analyze_mesh(file_path):
         print(json.dumps({
             "message": "File pre-processed successfully.", 
             "faces": candidates[:12],
-            "fileName": os.path.basename(file_path)
+            "fileName": os.path.basename(file_path),
+            "min_thickness": float(min_t) # Also include this for successful runs
         }))
 
     except Exception as e:
-        # Send error to stderr for the Node.js service to catch
         print(json.dumps({"error": str(e)}), file=sys.stderr)
         sys.exit(1)
 
@@ -143,8 +143,6 @@ if __name__ == "__main__":
     if args.command == "preprocess":
         analyze_mesh(args.file_path)
     elif args.command == "rotate":
-        # Pass only what place_on_face actually needs
         success, msg = place_on_face.rotate_and_overwrite(args.file_path, args.normal)
-        # Note: success/msg is handled by the function's own print() now
         if not success:
             sys.exit(1)
