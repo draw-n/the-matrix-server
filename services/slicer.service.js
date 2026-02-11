@@ -1,6 +1,7 @@
 const { exec } = require("child_process");
 const path = require("path");
 const fs = require("fs");
+
 const sliceMeshToGcode = (fileName, filePath, outputFilePath, options) => {
     console.log("Slicing file:", fileName, "with options:", options);
     return new Promise((resolve, reject) => {
@@ -90,7 +91,7 @@ const processSlicingOptions = (options) => {
     return optionsString.trim();
 };
 
-export const extractGCodeMetadata = async (gcodePath) => {
+const extractGCodeMetadata = async (gcodePath) => {
     const buffer = fs.readFileSync(gcodePath);
     const content = buffer.toString('utf8', Math.max(0, buffer.length - 5000)); // Read last 5KB
 
