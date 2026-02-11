@@ -117,35 +117,40 @@ const extractGCodeMetadata = async (gcodePath) => {
             Math.max(0, buffer.length - 100000),
         );
 
-        // 3. Log the "Tail" to see what SuperSlicer actually wrote
-        console.log("--- START GCODE FOOTER RAW ---");
-        console.log(content.slice(-500)); // Print the very last 500 characters
-        console.log("--- END GCODE FOOTER RAW ---");
-
         // 4. Test the Regexes individually
         const timeRegex =
             /estimated\s*printing\s*time\s*=\s*(?:(\d+)h\s*)?(?:(\d+)m\s*)?(?:(\d+)s)?/i;
         const filamentRegex = /filament\s*used\s*\[g\]\s*=\s*([\d.]+)/i;
 
-        const timeMatch = content.match(timeRegex);
-        const filamentMatch = content.match(filamentRegex);
-
-        console.log(
-            "DEBUG: Time Match Result:",
-            timeMatch ? timeMatch[0] : "NOT FOUND",
-        );
-        console.log(
-            "DEBUG: Filament Match Result:",
-            filamentMatch ? filamentMatch[0] : "NOT FOUND",
+        const timeLineMatch = content.match(
+            /estimated\s*printing\s*time.*=\s*(.*)/i,
         );
 
         let totalSeconds = 0;
-        if (timeMatch) {
-            const h = parseInt(timeMatch[1] || 0);
-            const m = parseInt(timeMatch[2] || 0);
-            const s = parseInt(timeMatch[3] || 0);
+
+        if (timeLineMatch) {
+            const timeStr = timeLineMatch[1]; // e.g., "15m 17s" or "3h 41m 5s"
+            console.log("DEBUG: Extracting from time string:", timeStr);
+
+            // 2. Extract units individually from the captured line
+            const hMatch = timeStr.match(/(\d+)h/);
+            const mMatch = timeStr.match(/(\d+)m/);
+            const sMatch = timeStr.match(/(\d+)s/);
+
+            const h = hMatch ? parseInt(hMatch[1]) : 0;
+            const m = mMatch ? parseInt(mMatch[1]) : 0;
+            const s = sMatch ? parseInt(sMatch[1]) : 0;
+
             totalSeconds = h * 3600 + m * 60 + s;
+
+            console.log(
+                `DEBUG: Parsed Time -> ${h}h ${m}m ${s}s (${totalSeconds} total seconds)`,
+            );
+        } else {
+            console.log("DEBUG: Time Match Result: NOT FOUND");
         }
+
+        const filamentMatch = content.match(filamentRegex);
 
         return {
             filamentUsedGrams: filamentMatch ? parseFloat(filamentMatch[1]) : 0,
