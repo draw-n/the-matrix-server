@@ -79,7 +79,7 @@ const createJob = async (req, res) => {
             status: "queued",
         });
         await job.save();
-        return res.status(201).json({ message: "Job created successfully." });
+        return res.status(200).json({ message: "Job created successfully.", job: job });
     } catch (err) {
         console.error(err.message);
         return res.status(500).send({

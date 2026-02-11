@@ -5,7 +5,6 @@ const fs = require("fs");
 const sliceMeshToGcode = (fileName, filePath, outputFilePath, options) => {
     console.log("Slicing file:", fileName, "with options:", options);
     return new Promise((resolve, reject) => {
-    
         const materialFile = "./slicer-cli/configurations/pla_config.ini";
         exec(
             `./slicer-cli/superslicer --output "${outputFilePath}" -g "${filePath}" --load "${materialFile}" ${options}`,
@@ -17,7 +16,7 @@ const sliceMeshToGcode = (fileName, filePath, outputFilePath, options) => {
                 }
 
                 resolve(true);
-            }
+            },
         );
     });
 };
@@ -63,7 +62,9 @@ const processSlicingOptions = (options) => {
                         referenceOptions[key][subKey] !== null
                     ) {
                         // Handle deeper nesting (e.g., temperatures.extruder.firstLayer)
-                        for (const [subSubKey, subSubValue] of Object.entries(subValue)) {
+                        for (const [subSubKey, subSubValue] of Object.entries(
+                            subValue,
+                        )) {
                             if (
                                 subSubKey in referenceOptions[key][subKey] &&
                                 referenceOptions[key][subKey][subSubKey]
@@ -92,25 +93,72 @@ const processSlicingOptions = (options) => {
 };
 
 const extractGCodeMetadata = async (gcodePath) => {
-    const buffer = fs.readFileSync(gcodePath);
-    const content = buffer.toString('utf8', Math.max(0, buffer.length - 5000)); // Read last 5KB
+    console.log("DEBUG: Attempting to extract metadata from:", gcodePath);
 
-    // SuperSlicer/PrusaSlicer specific keys
-    const timeMatch = content.match(/;\s*estimated\s*printing\s*time\s*=\s*(?:(\d+)h\s*)?(?:(\d+)m\s*)?(?:(\d+)s)?/i);
-    const filamentMatch = content.match(/;\s*filament\s*used\s*\[g\]\s*=\s*([\d.]+)/i);
+    try {
+        // 1. Check if file exists
+        if (!fs.existsSync(gcodePath)) {
+            console.error("DEBUG ERROR: File does not exist at path!");
+            return { filamentUsedGrams: 0, estimatedTimeSeconds: 0 };
+        }
 
-    let totalSeconds = 0;
-    if (timeMatch) {
-        const hours = parseInt(timeMatch[1] || "0");
-        const minutes = parseInt(timeMatch[2] || "0");
-        const seconds = parseInt(timeMatch[3] || "0");
-        totalSeconds = (hours * 3600) + (minutes * 60) + seconds;
+        // 2. Check file size
+        const stats = fs.statSync(gcodePath);
+        console.log(`DEBUG: File size is ${stats.size} bytes`);
+        if (stats.size === 0) {
+            console.error("DEBUG ERROR: File is empty (0 bytes)!");
+            return { filamentUsedGrams: 0, estimatedTimeSeconds: 0 };
+        }
+
+        const buffer = fs.readFileSync(gcodePath);
+        // Look at a larger chunk (last 15KB) just in case
+        const content = buffer.toString(
+            "utf8",
+            Math.max(0, buffer.length - 15000),
+        );
+
+        // 3. Log the "Tail" to see what SuperSlicer actually wrote
+        console.log("--- START GCODE FOOTER RAW ---");
+        console.log(content.slice(-500)); // Print the very last 500 characters
+        console.log("--- END GCODE FOOTER RAW ---");
+
+        // 4. Test the Regexes individually
+        const timeRegex =
+            /estimated\s*printing\s*time\s*=\s*(?:(\d+)h\s*)?(?:(\d+)m\s*)?(?:(\d+)s)?/i;
+        const filamentRegex = /filament\s*used\s*\[g\]\s*=\s*([\d.]+)/i;
+
+        const timeMatch = content.match(timeRegex);
+        const filamentMatch = content.match(filamentRegex);
+
+        console.log(
+            "DEBUG: Time Match Result:",
+            timeMatch ? timeMatch[0] : "NOT FOUND",
+        );
+        console.log(
+            "DEBUG: Filament Match Result:",
+            filamentMatch ? filamentMatch[0] : "NOT FOUND",
+        );
+
+        let totalSeconds = 0;
+        if (timeMatch) {
+            const h = parseInt(timeMatch[1] || 0);
+            const m = parseInt(timeMatch[2] || 0);
+            const s = parseInt(timeMatch[3] || 0);
+            totalSeconds = h * 3600 + m * 60 + s;
+        }
+
+        return {
+            filamentUsedGrams: filamentMatch ? parseFloat(filamentMatch[1]) : 0,
+            estimatedTimeSeconds: totalSeconds,
+        };
+    } catch (err) {
+        console.error("DEBUG CRITICAL ERROR:", err);
+        return { filamentUsedGrams: 0, estimatedTimeSeconds: 0 };
     }
-
-    return {
-        filamentUsedGrams: filamentMatch ? parseFloat(filamentMatch[1]) : 0,
-        estimatedTimeSeconds: totalSeconds || 0
-    };
 };
 
-module.exports = { sliceMeshToGcode, processSlicingOptions, extractGCodeMetadata };
+module.exports = {
+    sliceMeshToGcode,
+    processSlicingOptions,
+    extractGCodeMetadata,
+};
