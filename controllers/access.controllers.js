@@ -2,7 +2,7 @@ const Access = require("../models/Access.js");
 const mongoose = require("mongoose");
 
 /**
- * Creates new access and saves to MongoDB.
+ * Creates a new role/access in MongoDB
  * @param {*} req - request details
  * @param {*} res - response details
  * @returns - response details (with status)

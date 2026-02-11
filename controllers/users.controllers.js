@@ -129,7 +129,10 @@ const getUser = async (req, res) => {
 
     try {
         if (uuid) {
-            const user = await User.findOne({ uuid: uuid }, { projection: { _id: 0, password: 0 } });
+            const user = await User.findOne(
+                { uuid: uuid },
+                { projection: { _id: 0, password: 0 } },
+            );
             if (!user) {
                 return res.status(404).send("User not found.");
             }
@@ -158,10 +161,12 @@ const getAllUsers = async (req, res) => {
     try {
         let filter = {};
         if (access) {
-            const accessArray = access.split(",").map(a => a.trim());
+            const accessArray = access.split(",").map((a) => a.trim());
             filter.access = { $in: accessArray };
         }
-        const user = await User.find(filter, { projection: { _id: 0, password: 0 } }).sort({ firstName: 1 });
+        const user = await User.find(filter, {
+            projection: { _id: 0, password: 0 },
+        }).sort({ firstName: 1 });
         return res.status(200).json(user);
     } catch (err) {
         return res.status(500).send({ message: err.message });
@@ -176,13 +181,16 @@ const getAllUsers = async (req, res) => {
  */
 const getEmails = async (req, res) => {
     try {
-        const users = await User.find({}, { projection: { _id: 0, password: 0 } });
+        const users = await User.find(
+            {},
+            { projection: { _id: 0, password: 0 } },
+        );
 
         const emails = users.map((user) => user.email).join(",");
 
         res.setHeader(
             "Content-Disposition",
-            'attachment; filename="emails.txt"'
+            'attachment; filename="emails.txt"',
         );
         res.setHeader("Content-Type", "text/plain");
         return res.status(200).send(emails);
@@ -191,12 +199,20 @@ const getEmails = async (req, res) => {
     }
 };
 
-
+/**
+ * registers additional user details during first-time setup
+ * @param {*} req - request details
+ * @param {*} res - response details
+ * @returns - response details (with status)
+ */
 const firstTimeSetup = async (req, res) => {
     try {
         const { uuid } = req.user; // `req.user` is set by Passport
         if (uuid) {
-            const user = await User.findOne({ uuid: uuid }, { projection: { _id: 0, password: 0 } });
+            const user = await User.findOne(
+                { uuid: uuid },
+                { projection: { _id: 0, password: 0 } },
+            );
             if (!user) {
                 return res.status(404).send({ message: "User not found." });
             }
@@ -222,6 +238,12 @@ const firstTimeSetup = async (req, res) => {
     }
 };
 
+/**
+ * allows a user to change their password by providing the current password and new password, with validation
+ * @param {*} req - request details
+ * @param {*} res - response details
+ * @returns - response details (with status)
+ */
 const changePassword = async (req, res) => {
     const { currentPassword, newPassword } = req.body;
     if (!currentPassword || !newPassword) {
@@ -230,7 +252,9 @@ const changePassword = async (req, res) => {
             .json({ message: "Both current and new passwords are required." });
     }
     try {
-        const user = await User.findOne({ uuid: req.user.uuid }).select("+password"); // `req.user` is set by Passport
+        const user = await User.findOne({ uuid: req.user.uuid }).select(
+            "+password",
+        ); // `req.user` is set by Passport
         if (!user) {
             return res.status(404).json({ message: "User not found." });
         }
@@ -247,7 +271,9 @@ const changePassword = async (req, res) => {
 
         req.login(user, (err) => {
             if (err) {
-                return res.status(500).json({ message: "Session update failed." });
+                return res
+                    .status(500)
+                    .json({ message: "Session update failed." });
             }
             res.status(200).json({ message: "Password updated successfully." });
         });
@@ -256,8 +282,6 @@ const changePassword = async (req, res) => {
         res.status(500).json({ message: "Something went wrong." });
     }
 };
-
-
 
 module.exports = {
     createUser,

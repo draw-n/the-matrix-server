@@ -111,10 +111,10 @@ const extractGCodeMetadata = async (gcodePath) => {
         }
 
         const buffer = fs.readFileSync(gcodePath);
-        // Look at a larger chunk (last 15KB) just in case
+        // Look at a larger chunk (last 100KB) just in case
         const content = buffer.toString(
             "utf8",
-            Math.max(0, buffer.length - 15000),
+            Math.max(0, buffer.length - 100000),
         );
 
         // 3. Log the "Tail" to see what SuperSlicer actually wrote

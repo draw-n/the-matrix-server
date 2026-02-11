@@ -38,8 +38,10 @@ const createJob = async (req, res) => {
     const { fileName, material, options, userId } = req.body;
     try {
         // after file upload
-        const filePath =
-            (process.env.MESH_INPUT_DIR || "meshes") + "/" + fileName;
+        const filePath = path.resolve(
+            process.env.MESH_INPUT_DIR || "meshes",
+            fileName,
+        );
         const gcodeFileName = fileName.replace(/\.[^/.]+$/, ".gcode");
         const gcodeFilePath = path.resolve(
             process.env.GCODE_OUTPUT_DIR || "gcodes",
@@ -89,6 +91,12 @@ const createJob = async (req, res) => {
     }
 };
 
+/**
+ * sets up a message box on the printer and checks for any ready or queued jobs to print next
+ * @param {*} req - request details
+ * @param {*} res - response details
+ * @returns - response details (with status)
+ */
 const readyMessage = async (req, res) => {
     try {
         const { printerIp } = req.params;
@@ -148,6 +156,12 @@ const readyMessage = async (req, res) => {
     }
 };
 
+/**
+ * sends the ready job to the printer and starts the print
+ * @param {*} req - request details
+ * @param {*} res - response details
+ * @returns - response details (with status)
+ */
 const sendJob = async (req, res) => {
     try {
         const { printerIp } = req.params;
@@ -195,7 +209,7 @@ const sendJob = async (req, res) => {
 };
 
 /**
- * pre-process uploaded file
+ * validates the mesh file and extracts major face data for orientation suggestions
  * @param {*} req - request details
  * @param {*} res - response details
  * @returns - response details (with status)
@@ -338,7 +352,10 @@ const preProcess = async (req, res) => {
 };
 
 /**
- * NEW: Rotate the mesh based on selected face and overwrite the file
+ * rotates the mesh to align the selected face with the print bed and saves the modified file
+ * @param {*} req - request details
+ * @param {*} res - response details
+ * @returns - response details (with status)
  */
 const placeOnFace = async (req, res) => {
     const { fileName, normal, centroid } = req.body;
@@ -379,6 +396,12 @@ const placeOnFace = async (req, res) => {
     }
 };
 
+/**
+ * retrieves all jobs, with optional filtering by userId, status, or equipmentId
+ * @param {*} req - request details (with optional query parameters for filtering)
+ * @param {*} res - response details
+ * @returns - response details (with status)
+ */
 const getAllJobs = async (req, res) => {
     const { userId, status, equipmentId } = req.query;
     try {
@@ -412,6 +435,12 @@ const getAllJobs = async (req, res) => {
     }
 };
 
+/**
+ * gets job count grouped by day for the last X days, with optional filtering by userId
+ * @param {*} req - request details (with optional query parameters for filtering by userId and days)
+ * @param {*} res - response details
+ * @returns - response details (with status)
+ */
 const getJobChartData = async (req, res) => {
     const { userId, days } = req.query;
     try {
@@ -468,6 +497,12 @@ const getJobChartData = async (req, res) => {
     }
 };
 
+/**
+ * aggregates the total filament used in grams across all jobs, with optional filtering by userId
+ * @param {*} req - request details (with optional query parameters for filtering by userId)
+ * @param {*} res - response details
+ * @returns - response details (with status)
+ */
 const getFilamentUsedGrams = async (req, res) => {
     const { userId } = req.query;
     try {
