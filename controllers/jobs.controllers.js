@@ -63,6 +63,8 @@ const createJob = async (req, res) => {
 
         const printer = await Equipment.findOne({ ipUrl: "10.68.1.176" });
 
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
         const { filamentUsedGrams, estimatedTimeSeconds } =
             await extractGCodeMetadata(gcodeFilePath);
 
@@ -109,15 +111,17 @@ const readyMessage = async (req, res) => {
             }).sort({ createdAt: 1 });
         }
 
-        if (!job) {
-            return res.status(200).json({ jobFound: false, message: "No jobs waiting." });
-        }
-
         // 3. Close out any previous "printing" jobs (The Chain Link)
         await Job.updateMany(
             { equipmentId: equipment.uuid, status: "printing" },
-            { status: "completed" }
+            { status: "completed" },
         );
+
+        if (!job) {
+            return res
+                .status(200)
+                .json({ jobFound: false, message: "No jobs waiting." });
+        }
 
         // 4. Send the Message Box to Duet
         // We do this every time /ready is called to ensure the user sees it
@@ -130,12 +134,11 @@ const readyMessage = async (req, res) => {
             await job.save();
         }
 
-        return res.status(200).json({ 
-            jobFound: true, 
-            status: job.status, 
-            message: "Ready message sent to printer." 
+        return res.status(200).json({
+            jobFound: true,
+            status: job.status,
+            message: "Ready message sent to printer.",
         });
-
     } catch (err) {
         console.error(err.message);
         return res.status(500).send({
@@ -385,7 +388,11 @@ const getAllJobs = async (req, res) => {
         }
 
         if (status) {
-            filter.status = status;
+            // Split "queued,printing" into ["queued", "printing"]
+            const statusArray = status.split(",");
+
+            // Use $in to match any value within that array
+            filter.status = { $in: statusArray };
         }
 
         if (equipmentId) {
