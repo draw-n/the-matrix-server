@@ -49,7 +49,7 @@ const createCategory = async (req, res) => {
  * @param {*} res - response details
  * @returns - response details (with status)
  */
-const deleteCategory = async (req, res) => {
+const deleteCategoryById = async (req, res) => {
     const uuid = req.params?.uuid;
 
     try {
@@ -92,7 +92,7 @@ const deleteCategory = async (req, res) => {
  * @param {*} res - response details
  * @returns - response details (with status)
  */
-const editCategory = async (req, res) => {
+const editCategoryById = async (req, res) => {
     const uuid = req.params?.uuid;
 
     try {
@@ -121,7 +121,7 @@ const editCategory = async (req, res) => {
  * @param {*} res - response details
  * @returns - response details (with status)
  */
-const getCategory = async (req, res) => {
+const getCategoryById = async (req, res) => {
     const uuid = req.params?.uuid;
 
     try {
@@ -163,8 +163,8 @@ const getAllCategories = async (req, res) => {
 
 module.exports = {
     createCategory,
-    deleteCategory,
-    editCategory,
-    getCategory,
+    deleteCategoryById,
+    editCategoryById,
+    getCategoryById,
     getAllCategories,
 };

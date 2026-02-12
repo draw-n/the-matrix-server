@@ -4,17 +4,17 @@ const router = express.Router();
 
 const {
     createAnnouncement,
-    deleteAnnouncement,
-    editAnnouncement,
-    getAnnouncement,
+    deleteAnnouncementById,
+    editAnnouncementById,
+    getAnnouncementById,
     getAllAnnouncements,
 } = require("../controllers/announcements.controllers.js");
 
 const { ensureAuthenticated } = require("../middleware/auth.js");
 
 router.post("/", ensureAuthenticated, createAnnouncement);
-router.put("/:uuid", ensureAuthenticated, editAnnouncement);
-router.get("/:uuid", ensureAuthenticated, getAnnouncement);
+router.put("/:uuid", ensureAuthenticated, editAnnouncementById);
+router.get("/:uuid", ensureAuthenticated, getAnnouncementById);
 router.get("/", getAllAnnouncements);
-router.delete("/:id", ensureAuthenticated, deleteAnnouncement);
+router.delete("/:uuid", ensureAuthenticated, deleteAnnouncementById);
 module.exports = router;

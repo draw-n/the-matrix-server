@@ -2,10 +2,10 @@ const express = require("express");
 const passport = require("passport");
 const {
     createUser,
-    getUser,
+    getUserById,
     getAllUsers,
-    updateUser,
-    deleteUser,
+    updateUserById,
+    deleteUserById,
     getEmails,
     firstTimeSetup,
     changePassword,
@@ -19,7 +19,7 @@ const router = express.Router();
 router.post("/", createUser);
 router.put("/first-time", ensureAuthenticated, firstTimeSetup);
 router.put("/change-password", ensureAuthenticated, changePassword);
-router.put("/:uuid", ensureAuthenticated, updateUser);
+router.put("/:uuid", ensureAuthenticated, updateUserById);
 router.get("/", ensureAuthenticated, getAllUsers);
 router.get("/departments", ensureAuthenticated, retrieveDepartments);
 router.get("/me", (req, res) => {
@@ -33,8 +33,8 @@ router.get("/me", (req, res) => {
     }
 });
 router.get("/emails", ensureAuthenticated, getEmails);
-router.get("/:uuid", ensureAuthenticated, getUser);
-router.delete("/:uuid", ensureAuthenticated, deleteUser);
+router.get("/:uuid", ensureAuthenticated, getUserById);
+router.delete("/:uuid", ensureAuthenticated, deleteUserById);
 
 router.post("/register", createUser);
 router.post("/login", (req, res, next) => {

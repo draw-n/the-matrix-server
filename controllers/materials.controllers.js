@@ -64,7 +64,7 @@ const createMaterial = async (req, res) => {
  * @param {*} res - response details
  * @returns - response details (with status)
  */
-const deleteMaterial = async (req, res) => {
+const deleteMaterialById = async (req, res) => {
     const uuid = req.params?.uuid;
 
     try {
@@ -94,7 +94,7 @@ const deleteMaterial = async (req, res) => {
  * @param {*} res - response details
  * @returns - response details (with status)
  */
-const editMaterial = async (req, res) => {
+const editMaterialById = async (req, res) => {
     const uuid = req.params?.uuid;
 
     try {
@@ -128,7 +128,7 @@ const editMaterial = async (req, res) => {
  * @param {*} res - response details
  * @returns - response details (with status)
  */
-const getMaterial = async (req, res) => {
+const getMaterialById = async (req, res) => {
     const uuid = req.params?.uuid;
 
     try {
@@ -183,8 +183,8 @@ const getAllMaterials = async (req, res) => {
 
 module.exports = {
     createMaterial,
-    deleteMaterial,
-    editMaterial,
-    getMaterial,
+    deleteMaterialById,
+    editMaterialById,
+    getMaterialById,
     getAllMaterials,
 };

@@ -104,7 +104,7 @@ const createEquipment = async (req, res) => {
  * @param {*} res - response details
  * @returns - response details (with status)
  */
-const deleteEquipment = async (req, res) => {
+const deleteEquipmentById = async (req, res) => {
     const uuid = req.params?.uuid;
 
     try {
@@ -137,7 +137,7 @@ const deleteEquipment = async (req, res) => {
  * @param {*} res - response details
  * @returns - response details (with status)
  */
-const editEquipment = async (req, res) => {
+const editEquipmentById = async (req, res) => {
     const uuid = req.params?.uuid;
     const { ipUrl, cameraUrl, routePath } = req.body;
     try {
@@ -218,7 +218,7 @@ const editEquipment = async (req, res) => {
  * @param {*} res - response object
  * @returns - response object (with status)
  */
-const updateStatus = async (req, res) => {
+const updateStatusById = async (req, res) => {
     const uuid = req.params?.uuid;
 
     try {
@@ -296,7 +296,7 @@ const updateStatus = async (req, res) => {
  * @param {*} res - response details
  * @returns - response details (with status)
  */
-const getEquipment = async (req, res) => {
+const getEquipmentById = async (req, res) => {
     const uuid = req.params?.uuid;
 
     try {
@@ -351,9 +351,9 @@ const getAllEquipment = async (req, res) => {
 
 module.exports = {
     createEquipment,
-    deleteEquipment,
-    editEquipment,
-    getEquipment,
+    deleteEquipmentById,
+    editEquipmentById,
+    getEquipmentById,
     getAllEquipment,
-    updateStatus,
+    updateStatusById,
 };

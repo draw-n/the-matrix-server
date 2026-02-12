@@ -64,7 +64,7 @@ const createUser = async (req, res) => {
  * @param {*} res - response details
  * @returns - response details (with status)
  */
-const deleteUser = async (req, res) => {
+const deleteUserById = async (req, res) => {
     const uuid = req.params?.uuid;
 
     try {
@@ -94,7 +94,7 @@ const deleteUser = async (req, res) => {
  * @param {*} res - response details
  * @returns - response details (with status)
  */
-const updateUser = async (req, res) => {
+const updateUserById = async (req, res) => {
     const uuid = req.params?.uuid;
     try {
         if (uuid) {
@@ -124,7 +124,7 @@ const updateUser = async (req, res) => {
  * @param {*} res - response details
  * @returns - response details (with status)
  */
-const getUser = async (req, res) => {
+const getUserById = async (req, res) => {
     const uuid = req.params?.uuid;
 
     try {
@@ -285,9 +285,9 @@ const changePassword = async (req, res) => {
 
 module.exports = {
     createUser,
-    deleteUser,
-    updateUser,
-    getUser,
+    deleteUserById,
+    updateUserById,
+    getUserById,
     getAllUsers,
     getEmails,
     firstTimeSetup,

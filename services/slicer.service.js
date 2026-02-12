@@ -154,7 +154,7 @@ const extractGCodeMetadata = async (gcodePath) => {
 
         return {
             filamentUsedGrams: filamentMatch ? parseFloat(filamentMatch[1]) : 0,
-            estimatedTimeSeconds: totalSeconds,
+            estimatedTimeSeconds: totalSeconds * 2,
         };
     } catch (err) {
         console.error("DEBUG CRITICAL ERROR:", err);

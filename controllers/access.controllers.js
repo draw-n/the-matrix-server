@@ -3,8 +3,8 @@ const mongoose = require("mongoose");
 
 /**
  * Creates a new role/access in MongoDB
- * @param {*} req - request details
- * @param {*} res - response details
+ * @param {*} req - role (string) and access code (string) details
+ * @param {*} res - access details (without id) if successful, error message if not successful
  * @returns - response details (with status)
  */
 const createAccess = async (req, res) => {
@@ -62,7 +62,7 @@ const editAccess = async (req, res) => {
 
             return res.status(200).json(accessObj);
         } else {
-            return res.status(400).send({ message: "Missing Access ID." });
+            return res.status(400).send({ message: "Missing Role." });
         }
     } catch (err) {
         console.error(err.message);
@@ -74,7 +74,7 @@ const editAccess = async (req, res) => {
 };
 
 /**
- * Retrieves an access from MongoDB based on id.
+ * Retrieves an access from MongoDB based on role.
  * @param {*} req - request details
  * @param {*} res - response details
  * @returns - response details (with status)
@@ -92,7 +92,7 @@ const getAccess = async (req, res) => {
             }
             return res.status(200).json(access);
         } else {
-            return res.status(400).send({ message: "Missing Access ID." });
+            return res.status(400).send({ message: "Missing Role." });
         }
     } catch (err) {
         console.error(err.message);
@@ -104,7 +104,7 @@ const getAccess = async (req, res) => {
 };
 
 /**
- * Gets all accesss based off a filter
+ * Gets all accesses based off a filter
  * @param {*} req - request details
  * @param {*} res - response details
  * @returns - response details (with status)

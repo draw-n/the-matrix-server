@@ -49,7 +49,7 @@ const createIssue = async (req, res) => {
  * @param {*} res - response details
  * @returns - response details (with status)
  */
-const deleteIssue = async (req, res) => {
+const deleteIssueById = async (req, res) => {
     const uuid = req.params?.uuid;
 
     try {
@@ -82,7 +82,7 @@ const deleteIssue = async (req, res) => {
  * @param {*} res - response details
  * @returns - response details (with status)
  */
-const editIssue = async (req, res) => {
+const editIssueById = async (req, res) => {
     const uuid = req.params?.uuid;
     try {
         if (uuid) {
@@ -118,7 +118,7 @@ const editIssue = async (req, res) => {
  * @param {*} res - response details
  * @returns - response details (with status)
  */
-const getIssue = async (req, res) => {
+const getIssueById = async (req, res) => {
     const uuid = req.params?.uuid;
 
     try {
@@ -182,8 +182,8 @@ const getAllIssues = async (req, res) => {
 
 module.exports = {
     createIssue,
-    deleteIssue,
-    editIssue,
-    getIssue,
+    deleteIssueById,
+    editIssueById,
+    getIssueById,
     getAllIssues,
 };

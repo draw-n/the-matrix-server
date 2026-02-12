@@ -4,20 +4,20 @@ const router = express.Router();
 
 const {
     createEquipment,
-    deleteEquipment,
-    editEquipment,
-    getEquipment,
+    deleteEquipmentById,
+    editEquipmentById,
+    getEquipmentById,
     getAllEquipment,
-    updateStatus,
+    updateStatusById,
 } = require("../controllers/equipment.controllers.js");
 
 const { ensureAuthenticated } = require("../middleware/auth.js");
 
 router.post("/", ensureAuthenticated, createEquipment);
-router.put("/:uuid", ensureAuthenticated, editEquipment);
-router.get("/status/:uuid", ensureAuthenticated, updateStatus);
-router.get("/:uuid", ensureAuthenticated, getEquipment);
+router.put("/:uuid", ensureAuthenticated, editEquipmentById);
+router.get("/status/:uuid", ensureAuthenticated, updateStatusById);
+router.get("/:uuid", ensureAuthenticated, getEquipmentById);
 router.get("/", ensureAuthenticated, getAllEquipment);
-router.delete("/:uuid", ensureAuthenticated, deleteEquipment);
+router.delete("/:uuid", ensureAuthenticated, deleteEquipmentById);
 
 module.exports = router;

@@ -4,7 +4,7 @@ const crypto = require("crypto");
 
 /**
  * Creates new announcement and saves to MongoDB.
- * @param {*} req - request details
+ * @param {*} req - announcement details
  * @param {*} res - response details
  * @returns - response details (with status)
  */
@@ -50,11 +50,11 @@ const createAnnouncement = async (req, res) => {
 
 /**
  * Deletes an announcement from MongoDB
- * @param {*} req - request details
+ * @param {*} req - announcement details
  * @param {*} res - response details
  * @returns - response details (with status)
  */
-const deleteAnnouncement = async (req, res) => {
+const deleteAnnouncementById = async (req, res) => {
     const uuid = req.params?.uuid;
 
     try {
@@ -89,7 +89,7 @@ const deleteAnnouncement = async (req, res) => {
  * @param {*} res - response details
  * @returns - response details (with status)
  */
-const editAnnouncement = async (req, res) => {
+const editAnnouncementById = async (req, res) => {
     const uuid = req.params?.uuid;
     try {
         if (uuid) {
@@ -125,7 +125,7 @@ const editAnnouncement = async (req, res) => {
  * @param {*} res - response details
  * @returns - response details (with status)
  */
-const getAnnouncement = async (req, res) => {
+const getAnnouncementById = async (req, res) => {
     const uuid = req.params?.uuid;
     try {
         if (uuid) {
@@ -193,8 +193,8 @@ const getAllAnnouncements = async (req, res) => {
 
 module.exports = {
     createAnnouncement,
-    deleteAnnouncement,
-    editAnnouncement,
-    getAnnouncement,
+    deleteAnnouncementById,
+    editAnnouncementById,
+    getAnnouncementById,
     getAllAnnouncements,
 };
