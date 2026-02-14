@@ -21,9 +21,15 @@ const CategorySchema = new Schema({
         {
             type: String,
             enum: ["temperature"], // list of special properties relevant to this category (hard coded)
+            lowercase: true,
         },
     ],
     color: { type: String, required: true }, // color associated with this category
+});
+
+CategorySchema.pre("save", function (next) {
+    this.name = this.name.charAt(0).toUpperCase() + this.name.slice(1);
+    next();
 });
 
 module.exports = Category = mongoose.model("categories", CategorySchema);

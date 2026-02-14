@@ -24,14 +24,28 @@ const readFile = (filePath) => {
     return fs.readFileSync(filePath);
 }
 
-const cleanUp = (folderPath) => {};
+// Helper function to retry async operations
+const retryRequest = async (fn, retries = 3, delayMs = 1000) => {
+    let lastError;
+    for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+            return await fn();
+        } catch (err) {
+            lastError = err;
+            if (attempt < retries) {
+                await delay(delayMs);
+            }
+        }
+    }
+    throw lastError;
+}
 
 const moveFile = (oldPath, newPath) => {
-    fs.rename(oldPath, newPath, function (err) {
+    fs.rename(oldPath, newPath, (err) => {
         if (err) throw err;
         console.log("File moved from " + oldPath + " to " + newPath);
     });
 };
 
 const delay = ms => new Promise(res => setTimeout(res, ms));
-module.exports = { checkFileExtensions, moveFile, readFile, delay, getFileExtension };
+module.exports = {retryRequest, checkFileExtensions, moveFile, readFile, delay, getFileExtension };

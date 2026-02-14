@@ -17,3 +17,5 @@ Thumbs.db
 dist/**/*
 
 files
+slicer-cli/SuperSlicer
+slicer-cli/superslicer

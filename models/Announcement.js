@@ -19,10 +19,12 @@ const AnnouncementSchema = new Schema({
         type: String, // general label for announcement
         required: true,
         enum: ["event", "classes", "other"],
+        lowercase: true,
     },
     status: {
         type: String, // scheduled if pending, posted if showing to users
         enum: ["scheduled", "posted"],
+        lowercase: true,
         required: true,
     },
     description: {

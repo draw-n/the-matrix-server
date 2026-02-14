@@ -5,7 +5,6 @@ import json
 import sys
 import warnings
 
-# Suppress warnings to prevent them from polluting stdout/JSON parsing
 warnings.filterwarnings("ignore")
 
 def rotate_and_overwrite(file_path, target_normal):

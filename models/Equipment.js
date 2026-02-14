@@ -17,11 +17,12 @@ const EquipmentSchema = new Schema({
     headline: { type: String }, // short headline or tagline for the equipment
     ipUrl: { type: String }, // IP address or URL to access the equipment
     cameraUrl: { type: String }, // URL to access a camera feed for the equipment
-    remotePrintAvailable: { // indicates if the equipment is available for remote printing
+    remotePrintAvailable: {
+        // indicates if the equipment is available for remote printing
         type: Boolean,
         required: true,
     },
-    categoryId: { 
+    categoryId: {
         type: String, // uuid of the category this equipment belongs to
         required: true,
         ref: "Category",
@@ -42,6 +43,13 @@ const EquipmentSchema = new Schema({
         type: String,
         required: true,
     },
+});
+
+EquipmentSchema.pre("save", function (next) {
+    this.name = this.name.charAt(0).toUpperCase() + this.name.slice(1);
+    this.routePath = this.routePath.toLowerCase();
+    this.status = this.status.toLowerCase();
+    next();
 });
 
 module.exports = Equipment = mongoose.model("equipment", EquipmentSchema);

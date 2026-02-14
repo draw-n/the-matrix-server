@@ -1,24 +1,25 @@
 const { exec } = require("child_process");
 const path = require("path");
+const {retryRequest} = require("../utils/file.utils.js");
 const fs = require("fs");
 
 const sliceMeshToGcode = (fileName, filePath, outputFilePath, options) => {
     console.log("Slicing file:", fileName, "with options:", options);
-    return new Promise((resolve, reject) => {
-        const materialFile = "./slicer-cli/configurations/pla_config.ini";
+    const materialFile = "./slicer-cli/configurations/pla_config.ini";
+    const command = `./slicer-cli/superslicer --output "${outputFilePath}" -g "${filePath}" --load "${materialFile}" ${options}`;
+    return retryRequest(() => new Promise((resolve, reject) => {
         exec(
-            `./slicer-cli/superslicer --output "${outputFilePath}" -g "${filePath}" --load "${materialFile}" ${options}`,
+            command,
             (error, stdout, stderr) => {
                 if (error) {
                     console.error(`exec error: ${error}`);
                     reject(error);
                     return;
                 }
-
                 resolve(true);
             },
         );
-    });
+    }));
 };
 
 /**

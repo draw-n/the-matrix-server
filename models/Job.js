@@ -27,6 +27,7 @@ const JobSchema = new Schema({
         type: String, // current status of the job
         enum: ["queued", "ready", "printing", "completed", "failed"],
         required: true,
+        lowercase: true,
     },
     filamentUsedGrams: { type: Number, default: 0 }, // estimated filament used in grams
     estimatedTimeSeconds: { type: Number, default: 0 }, // estimated print time in seconds

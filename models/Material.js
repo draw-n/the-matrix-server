@@ -51,4 +51,10 @@ const MaterialSchema = new Schema({
     },
 });
 
+MaterialSchema.pre("save", function (next) {
+    this.name = this.name.charAt(0).toUpperCase() + this.name.slice(1);
+    this.shortName = this.shortName.toUpperCase();
+    next();
+});
+
 module.exports = Material = mongoose.model("materials", MaterialSchema);

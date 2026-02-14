@@ -23,6 +23,7 @@ const UserSchema = new Schema({
     email: {
         type: String, // email address of the user
         required: true,
+        lowercase: true,
         unique: true,
     },
     password: {
@@ -34,6 +35,7 @@ const UserSchema = new Schema({
         type: String, // access level of the user
         required: true,
         enum: ["novice", "proficient", "expert", "moderator", "admin"],
+        lowercase: true,
         /* 
             novice = never taken rapid prototyping
             proficient = taken rapid prototyping and maybe a few projects
@@ -46,6 +48,7 @@ const UserSchema = new Schema({
         type: String, // current status of the user
         required: true,
         default: "undergraduate",
+        lowercase: true,
         enum: ["undergraduate", "graduate", "faculty"],
         /*
             undergraduate - have a graduation date, when reached need to remove
@@ -61,10 +64,20 @@ const UserSchema = new Schema({
     },
 });
 
-UserSchema.pre("save", async function (next) {
+UserSchema.pre("save", async (next) => {
     if (!this.isModified("password")) return next();
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
+
+    this.firstName =
+        this.firstName.charAt(0).toUpperCase() + this.firstName.slice(1);
+    this.lastName =
+        this.lastName.charAt(0).toUpperCase() + this.lastName.slice(1);
+
+    this.email = this.email.toLowerCase();
+    this.access = this.access.toLowerCase();
+    this.status = this.status.toLowerCase();
+
     next();
 });
 

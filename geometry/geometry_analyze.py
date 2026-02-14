@@ -6,7 +6,7 @@ import argparse
 import os
 
 import place_on_face
-import validate_mesh  # <--- Import your validation file
+import validate_mesh 
 
 def to_vector3(numpy_array):
     return {
@@ -59,12 +59,12 @@ def analyze_mesh(file_path):
 
         # 2. DECIMATION
         original_face_count = len(mesh.faces)
-        TARGET_FACES = 30000 
+        TARGET_FACES = 5000 
         if original_face_count > TARGET_FACES:
             try:
                 mesh = mesh.simplify_quadratic_decimation(face_count=TARGET_FACES)
             except:
-                pass
+                raise Exception("Mesh decimation failed. The model may be too complex to process.")
 
         # 3. RE-CENTERING
         bounds = mesh.bounds 
@@ -143,7 +143,7 @@ def analyze_mesh(file_path):
             "message": "File pre-processed successfully.", 
             "faces": candidates[:12],
             "fileName": os.path.basename(file_path),
-            "min_thickness": float(min_t) # Also include this for successful runs
+            "min_thickness": float(min_t)
         }))
 
     except Exception as e:
