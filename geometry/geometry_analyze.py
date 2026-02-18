@@ -59,13 +59,12 @@ def analyze_mesh(file_path):
 
         # 2. DECIMATION
         original_face_count = len(mesh.faces)
-        TARGET_FACES = 5000 
+        TARGET_FACES = 30000 
         if original_face_count > TARGET_FACES:
             try:
                 mesh = mesh.simplify_quadratic_decimation(face_count=TARGET_FACES)
             except:
-                raise Exception("Mesh decimation failed. The model may be too complex to process.")
-
+                pass  # If decimation fails, continue with original mesh
         # 3. RE-CENTERING
         bounds = mesh.bounds 
         center_x = (bounds[0][0] + bounds[1][0]) / 2.0
