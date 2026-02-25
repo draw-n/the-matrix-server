@@ -4,7 +4,10 @@ const { spawn } = require("child_process");
 
 // Path to the main python entry point
 // Make sure this matches the filename you saved earlier (geometry_analyze.py)
-const PYTHON_SCRIPT_PATH = path.join(__dirname, "../geometry/geometry_analyze.py");
+const PYTHON_SCRIPT_PATH = path.join(
+    __dirname,
+    "../geometry/geometry_analyze.py",
+);
 
 /**
  * Calls python script to analyze mesh and detect faces
@@ -12,7 +15,11 @@ const PYTHON_SCRIPT_PATH = path.join(__dirname, "../geometry/geometry_analyze.py
  */
 const detectMajorFacesPython = (filePath) => {
     return new Promise((resolve, reject) => {
-        const pythonProcess = spawn("python3", [PYTHON_SCRIPT_PATH, "preprocess", filePath]);
+        const pythonProcess = spawn("python3", [
+            PYTHON_SCRIPT_PATH,
+            "preprocess",
+            filePath,
+        ]);
 
         let dataString = "";
         let errorString = "";
@@ -31,11 +38,11 @@ const detectMajorFacesPython = (filePath) => {
                 // If we have data, try to parse it
                 if (dataString.trim()) {
                     const json = JSON.parse(dataString);
-                    
+
                     // If the Python script returned an explicit error object
                     if (json.error) return reject(new Error(json.error));
-                    
-                    // If it returned validation failure (error_type), we resolve it 
+
+                    // If it returned validation failure (error_type), we resolve it
                     // so the controller can handle the 400 error gracefully
                     if (json.error_type) return resolve(json);
 
@@ -46,10 +53,18 @@ const detectMajorFacesPython = (filePath) => {
             }
 
             if (code !== 0) {
-                return reject(new Error(`Python script failed: ${errorString || dataString}`));
+                return reject(
+                    new Error(
+                        `Python script failed: ${errorString || dataString}`,
+                    ),
+                );
             }
 
-            reject(new Error("Python script finished but returned no valid JSON output"));
+            reject(
+                new Error(
+                    "Python script finished but returned no valid JSON output",
+                ),
+            );
         });
     });
 };
@@ -60,7 +75,6 @@ const detectMajorFacesPython = (filePath) => {
  */
 const rotateMeshPython = (filePath, normal, centroid) => {
     return new Promise((resolve, reject) => {
-        
         // Handle input format ({x,y,z} or [x,y,z])
         let nx, ny, nz;
         if (Array.isArray(normal)) {
@@ -72,14 +86,16 @@ const rotateMeshPython = (filePath, normal, centroid) => {
         }
 
         const args = [
-            PYTHON_SCRIPT_PATH, 
-            "rotate", 
-            filePath, 
-            "--normal", 
-            String(nx), 
-            String(ny), 
-            String(nz)
+            PYTHON_SCRIPT_PATH,
+            "rotate",
+            filePath,
+            "--normal",
+            Number(nx).toFixed(12),
+            Number(ny).toFixed(12),
+            Number(nz).toFixed(12),
         ];
+
+        console.log("RotateMeshPython args:", args);
 
         const pythonProcess = spawn("python3", args);
 
@@ -96,20 +112,28 @@ const rotateMeshPython = (filePath, normal, centroid) => {
 
         pythonProcess.on("close", (code) => {
             if (code !== 0) {
-                return reject(new Error(`Rotation script failed: ${errorString || dataString}`));
+                return reject(
+                    new Error(
+                        `Rotation script failed: ${errorString || dataString}`,
+                    ),
+                );
             }
             try {
                 const json = JSON.parse(dataString);
                 if (json.error) return reject(new Error(json.error));
                 resolve(json);
             } catch (e) {
-                reject(new Error("Failed to parse Python output from rotation command"));
+                reject(
+                    new Error(
+                        "Failed to parse Python output from rotation command",
+                    ),
+                );
             }
         });
     });
 };
 
-module.exports = { 
-    detectMajorFacesPython, 
-    rotateMeshPython 
+module.exports = {
+    detectMajorFacesPython,
+    rotateMeshPython,
 };

@@ -1,25 +1,25 @@
 const { exec } = require("child_process");
 const path = require("path");
-const {retryRequest} = require("../utils/file.utils.js");
+const { retryRequest } = require("../utils/file.utils.js");
 const fs = require("fs");
 
 const sliceMeshToGcode = (fileName, filePath, outputFilePath, options) => {
     console.log("Slicing file:", fileName, "with options:", options);
     const materialFile = "./slicer-cli/configurations/pla_config.ini";
     const command = `./slicer-cli/superslicer --output "${outputFilePath}" -g "${filePath}" --load "${materialFile}" ${options}`;
-    return retryRequest(() => new Promise((resolve, reject) => {
-        exec(
-            command,
-            (error, stdout, stderr) => {
-                if (error) {
-                    console.error(`exec error: ${error}`);
-                    reject(error);
-                    return;
-                }
-                resolve(true);
-            },
-        );
-    }));
+    return retryRequest(
+        () =>
+            new Promise((resolve, reject) => {
+                exec(command, (error, stdout, stderr) => {
+                    if (error) {
+                        console.error(`exec error: ${error}`);
+                        reject(error);
+                        return;
+                    }
+                    resolve(true);
+                });
+            }),
+    );
 };
 
 /**
@@ -82,7 +82,9 @@ const processSlicingOptions = (options) => {
                 }
             } else if (referenceOptions[key]) {
                 if (key === "supports") {
-                    optionsString += value ? ` ${referenceOptions[key]}` : "";
+                    optionsString += value
+                        ? ` ${referenceOptions[key]}`
+                        : ` ${referenceOptions[key]}=0`;
                 } else optionsString += ` ${referenceOptions[key]} ${value}`;
             }
         } else {

@@ -8,6 +8,8 @@ import os
 import place_on_face
 import validate_mesh 
 
+print("sys.argv:", sys.argv, file=sys.stderr)  # Debug: Print command-line arguments to stderr
+
 def to_vector3(numpy_array):
     return {
         "x": float(numpy_array[0]),
@@ -158,7 +160,7 @@ if __name__ == "__main__":
     
     p_rot = subparsers.add_parser("rotate")
     p_rot.add_argument("file_path")
-    p_rot.add_argument("--normal", nargs=3, type=float)
+    p_rot.add_argument("--normal", nargs=3, type=float, required=True)
     
     args = parser.parse_args()
     if args.command == "preprocess":
