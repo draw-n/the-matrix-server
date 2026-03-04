@@ -13,8 +13,7 @@ const {
     startPrint,
     connectToDuet,
     sendGcodeToDuet,
-    getPrinterStatus,
-    sendMessageToDuet,
+    sendMacroToDuet,
 } = require("../services/duet.service.js");
 const {
     detectMajorFacesPython,
@@ -81,7 +80,9 @@ const createJob = async (req, res) => {
             status: "queued",
         });
         await job.save();
-        return res.status(200).json({ message: "Job created successfully.", job: job });
+        return res
+            .status(200)
+            .json({ message: "Job created successfully.", job: job });
     } catch (err) {
         console.error(err.message);
         return res.status(500).send({
@@ -91,120 +92,146 @@ const createJob = async (req, res) => {
     }
 };
 
-/**
- * sets up a message box on the printer and checks for any ready or queued jobs to print next
- * @param {*} req - request details
- * @param {*} res - response details
- * @returns - response details (with status)
- */
-const readyMessage = async (req, res) => {
+const readyJob = async (req, res) => {
     try {
         const { printerIp } = req.params;
-        const equipment = await Equipment.findOne({ ipUrl: printerIp });
-        if (!equipment) {
-            return res.status(404).json({ message: "Equipment not found." });
-        }
+        const { uiSyncValue = 0 } = req.query;
+        const connect = await connectToDuet(printerIp);
+        console.log("Connected to printer:", connect);
 
-        // 1. Check if there's a job already in 'ready' status
+        const equipment = await Equipment.findOne({ ipUrl: printerIp });
+        if (!equipment)
+            return res.status(404).json({ message: "Equipment not found." });
+
+        // 1. FIND THE ACTIVE JOB
         let job = await Job.findOne({
             equipmentId: equipment.uuid,
-            status: "ready",
+            status: { $in: ["printing", "ready"] },
         }).sort({ createdAt: 1 });
 
-        // 2. If no 'ready' job, look for a 'queued' one
-        if (!job) {
-            job = await Job.findOne({
+        // 2. SCENARIO A: NO ACTIVE JOB / FETCH NEXT FROM QUEUE
+        if (!job || (job.status === "printing" && job.lastPrompt === "NONE")) {
+            if (job) {
+                job.status = "completed";
+                await job.save();
+            }
+
+            const nextJob = await Job.findOne({
                 equipmentId: equipment.uuid,
                 status: "queued",
             }).sort({ createdAt: 1 });
+
+            if (!nextJob) {
+                return res
+                    .status(200)
+                    .json({ jobFound: false, message: "No jobs waiting." });
+            }
+
+            // Initialize new job to the start of the interview chain
+            nextJob.status = "ready";
+            nextJob.lastPrompt = "NONE";
+            await nextJob.save();
+            job = nextJob; // Pass it down to be processed below
         }
 
-        // 3. Close out any previous "printing" jobs (The Chain Link)
-        await Job.updateMany(
-            { equipmentId: equipment.uuid, status: "printing" },
-            { status: "completed" },
-        );
+        // 3. SCENARIO B: PROCESS THE CURRENT STATE (Process switch)
+        // We trigger this if the user clicked (uiSync > 0) OR if it's a brand new "NONE" job
+        if (uiSyncValue > 0 || job.lastPrompt === "NONE") {
+            console.log(
+                `📡 Job: ${job.uuid} | State: ${job.lastPrompt} | Input: ${uiSyncValue}`,
+            );
 
-        if (!job) {
-            return res
-                .status(200)
-                .json({ jobFound: false, message: "No jobs waiting." });
-        }
+            switch (job.lastPrompt) {
+                case "NONE":
+                    // Entry Point: Start the Success Check
+                    job.lastPrompt = "SUCCESS_CHECK";
+                    await sendMacroToDuet(printerIp, "00_success_check.g");
+                    break;
 
-        // 4. Send the Message Box to Duet
-        // We do this every time /ready is called to ensure the user sees it
-        const message = await sendMessageToDuet(printerIp);
-        console.log("Ready message sent to printer:", message);
+                case "SUCCESS_CHECK":
+                    if (Number(uiSyncValue) === 1) {
+                        // YES
+                        job.lastPrompt = "BED_CLEAR_CHECK";
+                        await sendMacroToDuet(printerIp, "01_bed_clear.g");
+                    } else {
+                        // NO
+                        job.lastPrompt = "REPRINT_CHECK";
+                        await sendMacroToDuet(printerIp, "02_reprint_check.g");
+                    }
+                    break;
 
-        // 5. Update status to 'ready' if it was 'queued'
-        if (job.status === "queued") {
-            job.status = "ready";
+                case "REPRINT_CHECK":
+                    if (Number(uiSyncValue) === 1) {
+                        // YES (Reprint)
+                        job.status = "ready";
+                        job.lastPrompt = "BED_CLEAR_CHECK";
+                        job.createdAt = new Date(0);
+                        await sendMacroToDuet(printerIp, "01_bed_clear.g");
+                    } else {
+                        // NO
+                        job.lastPrompt = "FAILURE_REASON";
+                        await sendMacroToDuet(printerIp, "03_failure_reason.g");
+                    }
+                    break;
+
+                case "FAILURE_REASON":
+                    job.status = "failed";
+                    job.failureReason = uiSyncValue;
+                    job.lastPrompt = "NONE"; // End of line for this job
+                    break;
+
+                case "BED_CLEAR_CHECK":
+                    // Final confirmation received. Upload and Print.
+                    const sendGcode = await sendGcodeToDuet(
+                        printerIp,
+                        job.gcodeFileName,
+                        path.resolve(
+                            process.env.GCODE_OUTPUT_DIR || "gcodes",
+                            job.gcodeFileName,
+                        ),
+                    );
+                    console.log("Gcode sent to printer:", sendGcode);
+                    // start print
+                    const starting = await startPrint(
+                        printerIp,
+                        job.gcodeFileName,
+                    );
+                    console.log("Print started:", starting);
+
+                    job.status = "printing";
+                    job.lastPrompt = "NONE";
+                    break;
+            }
+
             await job.save();
+
+            // Always reset the printer sync variable after processing a transition
+            try {
+                await axios.get(`http://${printerIp}/rr_gcode`, {
+                    params: { gcode: `set global.ui_sync = 0` },
+                    timeout: 2000, // Don't let a slow reset hang the API response
+                });
+            } catch (e) {
+                console.warn(
+                    "⚠️ Minor: Failed to reset ui_sync on Duet. Will retry next poll.",
+                );
+            }
+
+            return res.status(200).json({
+                jobFound: true,
+                message: `Transitioned to ${job.lastPrompt}`,
+            });
         }
 
+        // 4. SCENARIO C: IDLE WAITING
+        // If we get here, it means uiSyncValue is 0 and lastPrompt is not NONE
         return res.status(200).json({
             jobFound: true,
-            status: job.status,
-            message: "Ready message sent to printer.",
+            message: `Awaiting user response for ${job.lastPrompt}`,
         });
     } catch (err) {
-        console.error(err.message);
-        return res.status(500).send({
-            message: "Error when processing ready message.",
-            error: err.message,
-        });
-    }
-};
-
-/**
- * sends the ready job to the printer and starts the print
- * @param {*} req - request details
- * @param {*} res - response details
- * @returns - response details (with status)
- */
-const sendJob = async (req, res) => {
-    try {
-        const { printerIp } = req.params;
-        const equipment = await Equipment.findOne({ ipUrl: printerIp });
-        if (!equipment) {
-            return res.status(404).json({ message: "Equipment not found." });
-        }
-        const readyJob = await Job.findOne({
-            equipmentId: equipment.uuid,
-            status: "ready",
-        });
-        if (!readyJob) {
-            return res.status(404).json({ message: "No ready jobs found." });
-        }
-
-        const connect = await connectToDuet(printerIp);
-        console.log("Connected to printer:", connect);
-        // upload gcode to printer
-        const sendGcode = await sendGcodeToDuet(
-            printerIp,
-            readyJob.gcodeFileName,
-            path.resolve(
-                process.env.GCODE_OUTPUT_DIR || "gcodes",
-                readyJob.gcodeFileName,
-            ),
-        );
-        console.log("Gcode sent to printer:", sendGcode);
-        // start print
-        const starting = await startPrint(printerIp, readyJob.gcodeFileName);
-        console.log("Print started:", starting);
-
-        const jobId = readyJob.uuid;
-        await Job.findOneAndUpdate({ uuid: jobId }, { status: "printing" });
-
-        return res
-            .status(200)
-            .json({ message: "Job sent to printer successfully." });
-    } catch (err) {
-        console.error(err.message);
-        return res.status(500).send({
-            message: "Error when sending job to printer.",
-            error: err.message,
-        });
+        console.error("ReadyMessage Error:", err.message);
+        return res.status(500).json({ error: err.message });
     }
 };
 
@@ -527,9 +554,8 @@ const getFilamentUsedGrams = async (req, res) => {
 module.exports = {
     createJob,
     preProcess,
-    sendJob,
+    readyJob,
     getAllJobs,
-    readyMessage,
     placeOnFace,
     getJobChartData,
     getFilamentUsedGrams,

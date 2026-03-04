@@ -8,7 +8,7 @@ const { readFile, delay, retryRequest } = require("../utils/file.utils.js");
  */
 const connectToDuet = async (printerIp) => {
     const response = await retryRequest(() =>
-        axios.get(`http://${printerIp}/rr_connect?password=`)
+        axios.get(`http://${printerIp}/rr_connect?password=`),
     );
     return response.data;
 };
@@ -23,14 +23,10 @@ const sendGcodeToDuet = async (printerIp, fileName, filePath) => {
     const fileData = readFile(filePath);
 
     const response = await retryRequest(() =>
-        axios.post(
-            `http://${printerIp}/rr_upload`,
-            fileData,
-            {
-                params: { name: `/gcodes/${fileName}` },
-                headers: { "Content-Type": "application/octet-stream" },
-            },
-        )
+        axios.post(`http://${printerIp}/rr_upload`, fileData, {
+            params: { name: `/gcodes/${fileName}` },
+            headers: { "Content-Type": "application/octet-stream" },
+        }),
     );
 
     return response.data;
@@ -45,12 +41,12 @@ const startPrint = async (printerIp, fileName) => {
     const load = await retryRequest(() =>
         axios.get(`http://${printerIp}/rr_gcode`, {
             params: { gcode: `M23 ${fileName}` },
-        })
+        }),
     );
     const start = await retryRequest(() =>
         axios.get(`http://${printerIp}/rr_gcode`, {
             params: { gcode: `M24` },
-        })
+        }),
     );
     return start.data;
 };
@@ -62,25 +58,27 @@ const startPrint = async (printerIp, fileName) => {
  */
 const getPrinterStatus = async (printerIp) => {
     const response = await retryRequest(() =>
-        axios.get(`http://${printerIp}/rr_model?key=state.status`)
+        axios.get(`http://${printerIp}/rr_model?key=state.status`),
     );
     return response.data.result;
 };
 
-const sendMessageToDuet = async (printerIp) => {
+const sendMacroToDuet = async (printerIp, macroFileName) => {
+    const macroPath = path.join(__dirname, "../duet/macros", macroFileName);
+    const gcodeContent = fstat.readFileSync(macroPath, "utf8");
+
+    await retryRequest(() =>
+        axios.post(`http://${printerIp}/rr_upload`, gcodeContent, {
+            params: { name: `/macros/${macroFileName}` },
+            headers: { "Content-Type": "application/octet-stream" },
+        }),
+    );
+
     const messageResponse = await retryRequest(() =>
         axios.get(`http://${printerIp}/rr_gcode`, {
-            params: { gcode: `M291 P"Start the next print?" S2` },
-        })
+            params: { gcode: `M98 P${macroFileName}` },
+        }),
     );
-    for (let i = 0; i < 5; i++) {
-        await delay(1000);
-        await retryRequest(() =>
-            axios.get(`http://${printerIp}/rr_gcode`, {
-                params: { gcode: `M300 S250 P2000` },
-            })
-        );
-    }
     return messageResponse.data;
 };
 
@@ -91,7 +89,7 @@ const sendMessageToDuet = async (printerIp) => {
  */
 const disconnectFromDuet = async (printerIp) => {
     const response = await retryRequest(() =>
-        axios.get(`http://${printerIp}/rr_disconnect`)
+        axios.get(`http://${printerIp}/rr_disconnect`),
     );
     return response.data;
 };
@@ -102,5 +100,5 @@ module.exports = {
     startPrint,
     getPrinterStatus,
     disconnectFromDuet,
-    sendMessageToDuet,
+    sendMacroToDuet,
 };

@@ -29,6 +29,18 @@ const JobSchema = new Schema({
         required: true,
         lowercase: true,
     },
+    lastPrompt: {
+        type: String,
+        enum: [
+            "NONE",
+            "SUCCESS_CHECK",
+            "REPRINT_CHECK",
+            "FAILURE REASON",
+            "BED_CLEAR_CHECK",
+        ],
+        default: "NONE",
+    },
+    failureReason: { type: String, default: "" }, // if status is failed, this field can contain the reason
     filamentUsedGrams: { type: Number, default: 0 }, // estimated filament used in grams
     estimatedTimeSeconds: { type: Number, default: 0 }, // estimated print time in seconds
     createdAt: { type: Date, default: Date.now }, // date the job was created

@@ -6,11 +6,10 @@ const {
     getJobChartData,
     createJob,
     preProcess,
-    sendJob,
     getAllJobs,
-    readyMessage,
     placeOnFace,
     getFilamentUsedGrams,
+    readyJob,
 } = require("../controllers/jobs.controllers.js");
 const { ensureAuthenticated } = require("../middleware/auth.js");
 
@@ -39,7 +38,6 @@ router.get("/", ensureAuthenticated, getAllJobs);
 router.get("/chart-data", ensureAuthenticated, getJobChartData);
 router.get("/filament-usage", ensureAuthenticated, getFilamentUsedGrams);
 // endpoints for printer to check for jobs, no authentication
-router.get("/:printerIp/ready", readyMessage);
-router.get("/:printerIp/send", sendJob);
+router.get("/:printerIp/ready", readyJob);
 
 module.exports = router;
