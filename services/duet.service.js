@@ -1,6 +1,7 @@
 const axios = require("axios");
 const path = require("path");
 const fstat = require("fs");
+
 const { readFile, delay, retryRequest } = require("../utils/file.utils.js");
 
 /**
@@ -78,7 +79,7 @@ const sendMacroToDuet = async (printerIp, macroFileName) => {
 
     const messageResponse = await retryRequest(() =>
         axios.get(`http://${printerIp}/rr_gcode`, {
-            params: { gcode: `M98 P${macroFileName}` },
+            params: { gcode: `M98 P"${macroFileName}"` },
         }),
     );
     return messageResponse.data;
