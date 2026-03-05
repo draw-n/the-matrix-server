@@ -151,8 +151,8 @@ const readyJob = async (req, res) => {
                 case "SUCCESS_CHECK":
                     if (Number(uiSyncValue) === 1) {
                         // YES
-                        job.lastPrompt = "BED_CLEAR_CHECK";
-                        await sendMacroToDuet(printerIp, "01_bed_clear.g");
+                        job.status = "ready";
+                        job.lastPrompt = "NONE";
                     } else {
                         // NO
                         job.lastPrompt = "REPRINT_CHECK";
