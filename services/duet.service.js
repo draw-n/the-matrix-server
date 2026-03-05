@@ -1,5 +1,6 @@
 const axios = require("axios");
 const path = require("path");
+const fstat = require("fs");
 const { readFile, delay, retryRequest } = require("../utils/file.utils.js");
 
 /**
