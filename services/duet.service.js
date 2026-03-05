@@ -82,6 +82,13 @@ const sendMacroToDuet = async (printerIp, macroFileName) => {
             params: { gcode: `M98 P"/macros/${macroFileName}"` },
         }),
     );
+
+    const beepResponse = await retryRequest(() =>
+        axios.get(`http://${printerIp}/rr_gcode`, {
+            params: { gcode: `M300 S1000 P500` },
+        }),
+    );
+
     return messageResponse.data;
 };
 
