@@ -79,7 +79,7 @@ const sendMacroToDuet = async (printerIp, macroFileName) => {
 
     const messageResponse = await retryRequest(() =>
         axios.get(`http://${printerIp}/rr_gcode`, {
-            params: { gcode: `M98 P"${macroFileName}"` },
+            params: { gcode: `M98 P"/macros/${macroFileName}"` },
         }),
     );
     return messageResponse.data;
