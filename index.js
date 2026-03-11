@@ -70,6 +70,11 @@ app.use(passport.initialize());
 app.use(passport.session()); // persistent login session
 
 app.use(
+    "/images",
+    ensureAuthenticated,
+    express.static(path.join(__dirname, "files/images")),
+);
+app.use(
     "/meshes",
     ensureAuthenticated,
     express.static(path.resolve(process.env.MESH_INPUT_DIR || "meshes")),
