@@ -110,12 +110,7 @@ const readyJob = async (req, res) => {
         }).sort({ createdAt: 1 });
 
         // 2. SCENARIO A: NO ACTIVE JOB / FETCH NEXT FROM QUEUE
-        if (!job || (job.status === "printing" && job.lastPrompt === "NONE")) {
-            if (job) {
-                job.status = "completed";
-                await job.save();
-            }
-
+        if (!job) {
             const nextJob = await Job.findOne({
                 equipmentId: equipment.uuid,
                 status: "queued",
@@ -150,11 +145,11 @@ const readyJob = async (req, res) => {
 
                 case "SUCCESS_CHECK":
                     if (Number(uiSyncValue) === 1) {
-                        // YES
-                        job.lastPrompt = "BED_CLEAR_CHECK";
-                        await sendMacroToDuet(printerIp, "01_bed_clear.g");
+                        // YES - Print was successful, mark as completed
+                        job.status = "completed";
+                        job.lastPrompt = "NONE";
                     } else {
-                        // NO
+                        // NO - Print failed, ask about reprint
                         job.lastPrompt = "REPRINT_CHECK";
                         await sendMacroToDuet(printerIp, "02_reprint_check.g");
                     }
@@ -162,13 +157,12 @@ const readyJob = async (req, res) => {
 
                 case "REPRINT_CHECK":
                     if (Number(uiSyncValue) === 1) {
-                        // YES (Reprint)
+                        // YES (Reprint) - Go to bed clear check
                         job.status = "ready";
                         job.lastPrompt = "BED_CLEAR_CHECK";
-                        job.createdAt = new Date(0);
                         await sendMacroToDuet(printerIp, "01_bed_clear.g");
                     } else {
-                        // NO
+                        // NO - Ask for failure reason
                         job.lastPrompt = "FAILURE_REASON";
                         await sendMacroToDuet(printerIp, "03_failure_reason.g");
                     }
@@ -177,7 +171,7 @@ const readyJob = async (req, res) => {
                 case "FAILURE_REASON":
                     job.status = "failed";
                     job.failureReason = uiSyncValue;
-                    job.lastPrompt = "NONE"; // End of line for this job
+                    job.lastPrompt = "NONE";
                     break;
 
                 case "BED_CLEAR_CHECK":
@@ -209,7 +203,7 @@ const readyJob = async (req, res) => {
             try {
                 await axios.get(`http://${printerIp}/rr_gcode`, {
                     params: { gcode: `set global.ui_sync = 0` },
-                    timeout: 2000, // Don't let a slow reset hang the API response
+                    timeout: 2000,
                 });
             } catch (e) {
                 console.warn(
@@ -224,7 +218,6 @@ const readyJob = async (req, res) => {
         }
 
         // 4. SCENARIO C: IDLE WAITING
-        // If we get here, it means uiSyncValue is 0 and lastPrompt is not NONE
         return res.status(200).json({
             jobFound: true,
             message: `Awaiting user response for ${job.lastPrompt}`,
@@ -234,7 +227,6 @@ const readyJob = async (req, res) => {
         return res.status(500).json({ error: err.message });
     }
 };
-
 /**
  * validates the mesh file and extracts major face data for orientation suggestions
  * @param {*} req - request details

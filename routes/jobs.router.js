@@ -19,7 +19,11 @@ const storage = multer.diskStorage({
     },
     limits: { fileSize: 250 * 1024 * 1024 }, // 250 MB limit
     filename: (req, file, callback) => {
-        callback(null, file.originalname);
+        if (!req.user || !req.user.firstName || !req.user.lastName) {
+            return callback(new Error("User information is missing"));
+        }
+        const user = `${req.user.firstName}_${req.user.lastName}`;
+        callback(null, `${user}_${file.originalname}`);
     },
 });
 

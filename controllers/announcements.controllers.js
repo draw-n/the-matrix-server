@@ -11,7 +11,7 @@ const crypto = require("crypto");
 const createAnnouncement = async (req, res) => {
     const { type, description, createdBy, dateCreated, status, title } =
         req.body;
-    
+    const file = req.file;
     try {
         if (type && description && createdBy && dateCreated && status) {
             let announcement = new Announcement({
@@ -23,6 +23,7 @@ const createAnnouncement = async (req, res) => {
                 description,
                 createdBy,
                 dateCreated,
+                imageName: file ? file.filename : null,
                 lastUpdatedBy: createdBy,
                 dateLastUpdated: dateCreated,
             });
@@ -64,6 +65,13 @@ const deleteAnnouncementById = async (req, res) => {
                 return res
                     .status(404)
                     .send({ message: "Announcement not found." });
+            }
+
+            if (announcement.imageName) {
+                const imagePath = path.join("./files/images/announcements/", announcement.imageName);
+                if (fs.existsSync(imagePath)) {
+                    fs.unlinkSync(imagePath);
+                }
             }
 
             return res
