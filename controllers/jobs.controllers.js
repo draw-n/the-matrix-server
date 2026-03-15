@@ -14,7 +14,9 @@ const {
     connectToDuet,
     sendGcodeToDuet,
     sendMacroToDuet,
+    getPrinterStatus,
 } = require("../services/duet.service.js");
+const axios = require("axios");
 const {
     detectMajorFacesPython,
     rotateMeshPython,
@@ -96,20 +98,21 @@ const readyJob = async (req, res) => {
     try {
         const { printerIp } = req.params;
         const { uiSyncValue = 0 } = req.query;
-        const connect = await connectToDuet(printerIp);
-        console.log("Connected to printer:", connect);
+
+        // Note: avoid connecting here; connect only when we need to interact
+        // with the printer (sending macros, uploading gcode, starting prints).
 
         const equipment = await Equipment.findOne({ ipUrl: printerIp });
         if (!equipment)
             return res.status(404).json({ message: "Equipment not found." });
 
-        // 1. FIND THE ACTIVE JOB
+        // 1. FIND THE ACTIVE JOB (either ready/pre-print or printing)
         let job = await Job.findOne({
             equipmentId: equipment.uuid,
-            status: { $in: ["printing", "ready"] },
+            status: { $in: ["ready", "printing"] },
         }).sort({ createdAt: 1 });
 
-        // 2. SCENARIO A: NO ACTIVE JOB / FETCH NEXT FROM QUEUE
+        // 2. NO ACTIVE JOB -> pick next queued and set to ready
         if (!job) {
             const nextJob = await Job.findOne({
                 equipmentId: equipment.uuid,
@@ -122,60 +125,40 @@ const readyJob = async (req, res) => {
                     .json({ jobFound: false, message: "No jobs waiting." });
             }
 
-            // Initialize new job to the start of the interview chain
+            // Make job ready so pre-print bed check will be performed
             nextJob.status = "ready";
             nextJob.lastPrompt = "NONE";
             await nextJob.save();
-            job = nextJob; // Pass it down to be processed below
+            job = nextJob;
         }
 
-        // 3. SCENARIO B: PROCESS THE CURRENT STATE (Process switch)
-        // We trigger this if the user clicked (uiSync > 0) OR if it's a brand new "NONE" job
-        if (uiSyncValue > 0 || job.lastPrompt === "NONE") {
-            console.log(
-                `📡 Job: ${job.uuid} | State: ${job.lastPrompt} | Input: ${uiSyncValue}`,
-            );
+        // 3. PRE-PRINT FLOW: when job is READY, always require bed-check before starting
+        if (job.status === "ready") {
+            // If we haven't started the bed-check sequence yet, start it automatically
+            if (job.lastPrompt === "NONE") {
+                job.lastPrompt = "BED_CLEAR_CHECK";
+                await job.save();
+                // connect only when sending the macro
+                try {
+                    const conn = await connectToDuet(printerIp);
+                    console.log("Connected to printer:", conn);
+                } catch (e) {
+                    console.warn("Could not connect to Duet for bed check:", e.message);
+                }
+                await sendMacroToDuet(printerIp, "01_bed_clear.g");
+                return res.status(200).json({ jobFound: true, message: "Bed check started" });
+            }
 
-            switch (job.lastPrompt) {
-                case "NONE":
-                    // Entry Point: Start the Success Check
-                    job.lastPrompt = "SUCCESS_CHECK";
-                    await sendMacroToDuet(printerIp, "00_success_check.g");
-                    break;
-
-                case "SUCCESS_CHECK":
-                    if (Number(uiSyncValue) === 1) {
-                        // YES - Print was successful, mark as completed
-                        job.status = "completed";
-                        job.lastPrompt = "NONE";
-                    } else {
-                        // NO - Print failed, ask about reprint
-                        job.lastPrompt = "REPRINT_CHECK";
-                        await sendMacroToDuet(printerIp, "02_reprint_check.g");
+            // We're in the bed-check state and waiting for UI confirmation
+            if (job.lastPrompt === "BED_CLEAR_CHECK") {
+                if (Number(uiSyncValue) === 1) {
+                    // Confirmed: upload & start print
+                    try {
+                        await connectToDuet(printerIp);
+                    } catch (e) {
+                        console.warn("Could not connect to Duet for upload/start:", e.message);
                     }
-                    break;
 
-                case "REPRINT_CHECK":
-                    if (Number(uiSyncValue) === 1) {
-                        // YES (Reprint) - Go to bed clear check
-                        job.status = "ready";
-                        job.lastPrompt = "BED_CLEAR_CHECK";
-                        await sendMacroToDuet(printerIp, "01_bed_clear.g");
-                    } else {
-                        // NO - Ask for failure reason
-                        job.lastPrompt = "FAILURE_REASON";
-                        await sendMacroToDuet(printerIp, "03_failure_reason.g");
-                    }
-                    break;
-
-                case "FAILURE_REASON":
-                    job.status = "failed";
-                    job.failureReason = uiSyncValue;
-                    job.lastPrompt = "NONE";
-                    break;
-
-                case "BED_CLEAR_CHECK":
-                    // Final confirmation received. Upload and Print.
                     const sendGcode = await sendGcodeToDuet(
                         printerIp,
                         job.gcodeFileName,
@@ -185,43 +168,123 @@ const readyJob = async (req, res) => {
                         ),
                     );
                     console.log("Gcode sent to printer:", sendGcode);
-                    // start print
-                    const starting = await startPrint(
-                        printerIp,
-                        job.gcodeFileName,
-                    );
+
+                    const starting = await startPrint(printerIp, job.gcodeFileName);
                     console.log("Print started:", starting);
 
                     job.status = "printing";
                     job.lastPrompt = "NONE";
+                    await job.save();
+
+                    // reset ui_sync on Duet
+                    try {
+                        await axios.get(`http://${printerIp}/rr_gcode`, {
+                            params: { gcode: `set global.ui_sync = 0` },
+                            timeout: 2000,
+                        });
+                    } catch (e) {
+                        console.warn("⚠️ Minor: Failed to reset ui_sync on Duet.");
+                    }
+
+                    return res.status(200).json({ jobFound: true, message: "Print started" });
+                }
+
+                // waiting for user confirmation
+                return res.status(200).json({ jobFound: true, message: "Awaiting bed check confirmation" });
+            }
+        }
+
+        // 4. POST-PRINT FLOW: the Raspberry Pi only calls this endpoint when the
+        // printer is idle (i.e. after a print finishes). Therefore, if we see a
+        // job with status 'printing' when this endpoint is invoked, treat that as
+        // the print having finished and start the success-check sequence.
+        if (job.status === "printing") {
+            // Start success check if not already started
+            if (job.lastPrompt === "NONE") {
+                job.lastPrompt = "SUCCESS_CHECK";
+                await job.save();
+                // connect only when sending the macro
+                try {
+                    const conn = await connectToDuet(printerIp);
+                    console.log("Connected to printer for success check:", conn);
+                } catch (e) {
+                    console.warn("Could not connect to Duet for success check:", e.message);
+                }
+                await sendMacroToDuet(printerIp, "00_success_check.g");
+                return res.status(200).json({ jobFound: true, message: "Success check started" });
+            }
+
+            // Process responses for post-print prompts (SUCCESS_CHECK, REPRINT_CHECK, FAILURE_REASON)
+            switch (job.lastPrompt) {
+                case "SUCCESS_CHECK":
+                    if (Number(uiSyncValue) === 1) {
+                        // YES - Print was successful, mark as completed
+                        job.status = "completed";
+                        job.lastPrompt = "NONE";
+                        await job.save();
+                    } else if (Number(uiSyncValue) === 0) {
+                        // NO - ask about reprint
+                        job.lastPrompt = "REPRINT_CHECK";
+                        await job.save();
+                        try {
+                            await connectToDuet(printerIp);
+                        } catch (e) {
+                            console.warn("Could not connect to Duet for reprint check:", e.message);
+                        }
+                        await sendMacroToDuet(printerIp, "02_reprint_check.g");
+                    }
+                    break;
+
+                case "REPRINT_CHECK":
+                    if (Number(uiSyncValue) === 1) {
+                        // YES -> put the job back into queue as first
+                        job.status = "ready";
+                        job.lastPrompt = "NONE";
+                        await job.save();
+                    } else if (Number(uiSyncValue) === 0) {
+                        // NO -> ask for failure reason
+                        job.lastPrompt = "FAILURE_REASON";
+                        await job.save();
+                        try {
+                            await connectToDuet(printerIp);
+                        } catch (e) {
+                            console.warn("Could not connect to Duet for failure reason prompt:", e.message);
+                        }
+                        await sendMacroToDuet(printerIp, "03_failure_reason.g");
+                    }
+                    break;
+
+                case "FAILURE_REASON":
+                    // UI should send the chosen reason in uiSyncValue (or body), accept it and mark failed
+                    job.status = "failed";
+                    switch (uiSyncValue) {
+                        case "1":
+                            job.failureReason = "UNPRINTABLE_BAD_FILE";
+                            break;
+                        case "2":
+                            job.failureReason = "BAD_ORIENTATION";
+                            break;
+                    }
+                    job.lastPrompt = "NONE";
+                    await job.save();
                     break;
             }
 
-            await job.save();
-
-            // Always reset the printer sync variable after processing a transition
+            // After handling transitions, try to reset ui_sync
             try {
                 await axios.get(`http://${printerIp}/rr_gcode`, {
                     params: { gcode: `set global.ui_sync = 0` },
                     timeout: 2000,
                 });
             } catch (e) {
-                console.warn(
-                    "⚠️ Minor: Failed to reset ui_sync on Duet. Will retry next poll.",
-                );
+                console.warn("⚠️ Minor: Failed to reset ui_sync on Duet. Will retry next poll.");
             }
 
-            return res.status(200).json({
-                jobFound: true,
-                message: `Transitioned to ${job.lastPrompt}`,
-            });
+            return res.status(200).json({ jobFound: true, message: `Processed ${job.lastPrompt}` });
         }
 
-        // 4. SCENARIO C: IDLE WAITING
-        return res.status(200).json({
-            jobFound: true,
-            message: `Awaiting user response for ${job.lastPrompt}`,
-        });
+        // Fallback
+        return res.status(200).json({ jobFound: true, message: `No action for status ${job.status}` });
     } catch (err) {
         console.error("ReadyMessage Error:", err.message);
         return res.status(500).json({ error: err.message });
