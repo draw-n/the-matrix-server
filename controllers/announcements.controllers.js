@@ -60,7 +60,10 @@ const deleteAnnouncementById = async (req, res) => {
 
     try {
         if (uuid) {
-            const announcement = await Announcement.findOneAndDelete({ uuid }, { projection: { _id: 0 } });
+            const announcement = await Announcement.findOneAndDelete(
+                { uuid },
+                { projection: { _id: 0 } },
+            );
             if (!announcement) {
                 return res
                     .status(404)
@@ -68,7 +71,10 @@ const deleteAnnouncementById = async (req, res) => {
             }
 
             if (announcement.imageName) {
-                const imagePath = path.join("./files/images/announcements/", announcement.imageName);
+                const imagePath = path.join(
+                    "./files/images/announcements/",
+                    announcement.imageName,
+                );
                 if (fs.existsSync(imagePath)) {
                     fs.unlinkSync(imagePath);
                 }
@@ -99,11 +105,13 @@ const deleteAnnouncementById = async (req, res) => {
  */
 const editAnnouncementById = async (req, res) => {
     const uuid = req.params?.uuid;
+    const file = req.file;
     try {
         if (uuid) {
             const announcement = await Announcement.findOneAndUpdate(
                 { uuid },
-                req.body, { new: true, projection: { _id: 0 } }
+                { ...req.body, imageName: file ? file.filename : null },
+                { new: true, projection: { _id: 0 } },
             );
 
             if (!announcement) {
@@ -137,7 +145,10 @@ const getAnnouncementById = async (req, res) => {
     const uuid = req.params?.uuid;
     try {
         if (uuid) {
-            const announcement = await Announcement.findOne({ uuid }, { projection: { _id: 0 } });
+            const announcement = await Announcement.findOne(
+                { uuid },
+                { projection: { _id: 0 } },
+            );
             if (!announcement) {
                 return res
                     .status(404)
@@ -188,7 +199,9 @@ const getAllAnnouncements = async (req, res) => {
             filter.createdBy = new RegExp(createdBy, "i");
         }
 
-        const announcements = await Announcement.find(filter, { projection: { _id: 0 } }).sort({ date: 1 });
+        const announcements = await Announcement.find(filter, {
+            projection: { _id: 0 },
+        }).sort({ date: 1 });
         return res.status(200).json(announcements);
     } catch (err) {
         console.error(err.message);

@@ -222,7 +222,7 @@ const readyJob = async (req, res) => {
                         job.status = "completed";
                         job.lastPrompt = "NONE";
                         await job.save();
-                    } else if (Number(uiSyncValue) === 0) {
+                    } else if (Number(uiSyncValue) === 2) {
                         // NO - ask about reprint
                         job.lastPrompt = "REPRINT_CHECK";
                         await job.save();
@@ -241,7 +241,7 @@ const readyJob = async (req, res) => {
                         job.status = "ready";
                         job.lastPrompt = "NONE";
                         await job.save();
-                    } else if (Number(uiSyncValue) === 0) {
+                    } else if (Number(uiSyncValue) === 2) {
                         // NO -> ask for failure reason
                         job.lastPrompt = "FAILURE_REASON";
                         await job.save();
