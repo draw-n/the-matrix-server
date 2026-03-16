@@ -35,7 +35,7 @@ const JobSchema = new Schema({
             "NONE",
             "SUCCESS_CHECK",
             "REPRINT_CHECK",
-            "FAILURE REASON",
+            "FAILURE_REASON",
             "BED_CLEAR_CHECK",
         ],
         default: "NONE",
