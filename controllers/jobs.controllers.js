@@ -146,6 +146,7 @@ const readyJob = async (req, res) => {
                     console.warn("Could not connect to Duet for bed check:", e.message);
                 }
                 await sendMacroToDuet(printerIp, "01_bed_clear.g");
+              
                 return res.status(200).json({ jobFound: true, message: "Bed check started" });
             }
 
@@ -171,7 +172,7 @@ const readyJob = async (req, res) => {
 
                     const starting = await startPrint(printerIp, job.gcodeFileName);
                     console.log("Print started:", starting);
-
+                    job.uploadedAt = new Date();
                     job.status = "printing";
                     job.lastPrompt = "NONE";
                     await job.save();
@@ -220,6 +221,7 @@ const readyJob = async (req, res) => {
                     if (Number(uiSyncValue) === 1) {
                         // YES - Print was successful, mark as completed
                         job.status = "completed";
+                        job.finishedAt = new Date();
                         job.lastPrompt = "NONE";
                         await job.save();
                     } else if (Number(uiSyncValue) === 2) {
@@ -257,6 +259,7 @@ const readyJob = async (req, res) => {
                 case "FAILURE_REASON":
                     // UI should send the chosen reason in uiSyncValue (or body), accept it and mark failed
                     job.status = "failed";
+                    job.finishedAt = new Date();
                     switch (uiSyncValue) {
                         case "1":
                             job.failureReason = "UNPRINTABLE_BAD_FILE";
