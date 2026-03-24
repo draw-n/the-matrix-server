@@ -143,11 +143,16 @@ const readyJob = async (req, res) => {
                     const conn = await connectToDuet(printerIp);
                     console.log("Connected to printer:", conn);
                 } catch (e) {
-                    console.warn("Could not connect to Duet for bed check:", e.message);
+                    console.warn(
+                        "Could not connect to Duet for bed check:",
+                        e.message,
+                    );
                 }
                 await sendMacroToDuet(printerIp, "01_bed_clear.g");
-              
-                return res.status(200).json({ jobFound: true, message: "Bed check started" });
+
+                return res
+                    .status(200)
+                    .json({ jobFound: true, message: "Bed check started" });
             }
 
             // We're in the bed-check state and waiting for UI confirmation
@@ -157,7 +162,10 @@ const readyJob = async (req, res) => {
                     try {
                         await connectToDuet(printerIp);
                     } catch (e) {
-                        console.warn("Could not connect to Duet for upload/start:", e.message);
+                        console.warn(
+                            "Could not connect to Duet for upload/start:",
+                            e.message,
+                        );
                     }
 
                     const sendGcode = await sendGcodeToDuet(
@@ -170,7 +178,10 @@ const readyJob = async (req, res) => {
                     );
                     console.log("Gcode sent to printer:", sendGcode);
 
-                    const starting = await startPrint(printerIp, job.gcodeFileName);
+                    const starting = await startPrint(
+                        printerIp,
+                        job.gcodeFileName,
+                    );
                     console.log("Print started:", starting);
                     job.uploadedAt = new Date();
                     job.status = "printing";
@@ -184,14 +195,40 @@ const readyJob = async (req, res) => {
                             timeout: 2000,
                         });
                     } catch (e) {
-                        console.warn("⚠️ Minor: Failed to reset ui_sync on Duet.");
+                        console.warn(
+                            "⚠️ Minor: Failed to reset ui_sync on Duet.",
+                        );
                     }
 
-                    return res.status(200).json({ jobFound: true, message: "Print started" });
+                    return res
+                        .status(200)
+                        .json({ jobFound: true, message: "Print started" });
+                } else if (Number(uiSyncValue) === 0) {
+                    // If UI is still at the bed check prompt (uiSyncValue=0), resend the macro in case it was missed
+                    try {
+                        const conn = await connectToDuet(printerIp);
+                        console.log(
+                            "Connected to printer for bed check (resend):",
+                            conn,
+                        );
+                    } catch (e) {
+                        console.warn(
+                            "Could not connect to Duet for bed check (resend):",
+                            e.message,
+                        );
+                    }
+                    await sendMacroToDuet(printerIp, "01_bed_clear.g");
+                     return res.status(200).json({
+                        jobFound: true,
+                        message: "Bed check prompt resent",
+                    });
                 }
 
                 // waiting for user confirmation
-                return res.status(200).json({ jobFound: true, message: "Awaiting bed check confirmation" });
+                return res.status(200).json({
+                    jobFound: true,
+                    message: "Awaiting bed check confirmation",
+                });
             }
         }
 
@@ -207,12 +244,20 @@ const readyJob = async (req, res) => {
                 // connect only when sending the macro
                 try {
                     const conn = await connectToDuet(printerIp);
-                    console.log("Connected to printer for success check:", conn);
+                    console.log(
+                        "Connected to printer for success check:",
+                        conn,
+                    );
                 } catch (e) {
-                    console.warn("Could not connect to Duet for success check:", e.message);
+                    console.warn(
+                        "Could not connect to Duet for success check:",
+                        e.message,
+                    );
                 }
                 await sendMacroToDuet(printerIp, "00_success_check.g");
-                return res.status(200).json({ jobFound: true, message: "Success check started" });
+                return res
+                    .status(200)
+                    .json({ jobFound: true, message: "Success check started" });
             }
 
             // Process responses for post-print prompts (SUCCESS_CHECK, REPRINT_CHECK, FAILURE_REASON)
@@ -231,10 +276,32 @@ const readyJob = async (req, res) => {
                         try {
                             await connectToDuet(printerIp);
                         } catch (e) {
-                            console.warn("Could not connect to Duet for reprint check:", e.message);
+                            console.warn(
+                                "Could not connect to Duet for reprint check:",
+                                e.message,
+                            );
                         }
                         await sendMacroToDuet(printerIp, "02_reprint_check.g");
+                    } else if (Number(uiSyncValue) === 0) {
+                        try {
+                            const conn = await connectToDuet(printerIp);
+                            console.log(
+                                "Connected to printer for success check:",
+                                conn,
+                            );
+                        } catch (e) {
+                            console.warn(
+                                "Could not connect to Duet for success check:",
+                                e.message,
+                            );
+                        }
+                        await sendMacroToDuet(printerIp, "00_success_check.g");
+                        return res.status(200).json({
+                            jobFound: true,
+                            message: "Success check started",
+                        });
                     }
+
                     break;
 
                 case "REPRINT_CHECK":
@@ -250,24 +317,52 @@ const readyJob = async (req, res) => {
                         try {
                             await connectToDuet(printerIp);
                         } catch (e) {
-                            console.warn("Could not connect to Duet for failure reason prompt:", e.message);
+                            console.warn(
+                                "Could not connect to Duet for failure reason prompt:",
+                                e.message,
+                            );
                         }
                         await sendMacroToDuet(printerIp, "03_failure_reason.g");
+                    } else if (Number(uiSyncValue) === 0) {
+                        try {
+                            await connectToDuet(printerIp);
+                        } catch (e) {
+                            console.warn(
+                                "Could not connect to Duet for reprint check:",
+                                e.message,
+                            );
+                        }
+                        await sendMacroToDuet(printerIp, "02_reprint_check.g");
                     }
                     break;
 
                 case "FAILURE_REASON":
+                    if (Number(uiSyncValue) === 1) {
+                        job.failureReason = "UNPRINTABLE_BAD_FILE";
+                    } else if (Number(uiSyncValue) === 2) {
+                        job.failureReason = "BAD_ORIENTATION";
+                    } else if (Number(uiSyncValue) === 0) {
+                        try {
+                            await connectToDuet(printerIp);
+                        } catch (e) {
+                            console.warn(
+                                "Could not connect to Duet for failure reason prompt:",
+                                e.message,
+                            );
+                        }
+                        await sendMacroToDuet(
+                            printerIp,
+                            "03_failure_reason.g",
+                        );
+                        return res.status(200).json({
+                            jobFound: true,
+                            message: "Failure reason prompt sent",
+                        });
+                    }
                     // UI should send the chosen reason in uiSyncValue (or body), accept it and mark failed
                     job.status = "failed";
                     job.finishedAt = new Date();
-                    switch (uiSyncValue) {
-                        case "1":
-                            job.failureReason = "UNPRINTABLE_BAD_FILE";
-                            break;
-                        case "2":
-                            job.failureReason = "BAD_ORIENTATION";
-                            break;
-                    }
+
                     job.lastPrompt = "NONE";
                     await job.save();
                     break;
@@ -280,14 +375,22 @@ const readyJob = async (req, res) => {
                     timeout: 2000,
                 });
             } catch (e) {
-                console.warn("⚠️ Minor: Failed to reset ui_sync on Duet. Will retry next poll.");
+                console.warn(
+                    "⚠️ Minor: Failed to reset ui_sync on Duet. Will retry next poll.",
+                );
             }
 
-            return res.status(200).json({ jobFound: true, message: `Processed ${job.lastPrompt}` });
+            return res.status(200).json({
+                jobFound: true,
+                message: `Processed ${job.lastPrompt}`,
+            });
         }
 
         // Fallback
-        return res.status(200).json({ jobFound: true, message: `No action for status ${job.status}` });
+        return res.status(200).json({
+            jobFound: true,
+            message: `No action for status ${job.status}`,
+        });
     } catch (err) {
         console.error("ReadyMessage Error:", err.message);
         return res.status(500).json({ error: err.message });
