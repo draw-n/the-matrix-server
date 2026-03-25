@@ -10,6 +10,7 @@ const {
     placeOnFace,
     getFilamentUsedGrams,
     readyJob,
+    deleteJob
 } = require("../controllers/jobs.controllers.js");
 const { ensureAuthenticated } = require("../middleware/auth.js");
 
@@ -36,12 +37,12 @@ router.post(
     preProcess,
 );
 router.post("/place-on-face", ensureAuthenticated, placeOnFace);
-
 router.post("/", ensureAuthenticated, createJob);
 router.get("/", ensureAuthenticated, getAllJobs);
 router.get("/chart-data", ensureAuthenticated, getJobChartData);
 router.get("/filament-usage", ensureAuthenticated, getFilamentUsedGrams);
 // endpoints for printer to check for jobs, no authentication
 router.get("/:printerIp/ready", readyJob);
+router.delete("/:jobId", ensureAuthenticated, deleteJob);
 
 module.exports = router;

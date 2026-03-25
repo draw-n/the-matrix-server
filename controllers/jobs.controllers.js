@@ -539,6 +539,23 @@ const preProcess = async (req, res) => {
     }
 };
 
+const deleteJob = async (req, res) => {
+    const { jobId } = req.params;
+    try {
+        const job = await Job.findOneAndDelete({ uuid: jobId });
+        if (!job) {
+            return res.status(404).json({ message: "Job not found." });
+        }
+        return res.status(200).json({ message: "Job deleted successfully." });
+    } catch (err) {
+        console.error(err.message);
+        return res.status(500).json({
+            message: "Error when deleting job.",
+            error: err.message,
+        });
+    }
+};
+
 /**
  * rotates the mesh to align the selected face with the print bed and saves the modified file
  * @param {*} req - request details
@@ -716,6 +733,7 @@ module.exports = {
     createJob,
     preProcess,
     readyJob,
+    deleteJob,
     getAllJobs,
     placeOnFace,
     getJobChartData,
