@@ -40,6 +40,7 @@ const JobSchema = new Schema({
         ],
         default: "NONE",
     },
+    order: { type: Number, required: true }, // order of the job in the queue for the equipment, only for jobs with status "queued"
     failureReason: { type: String, default: "" }, // if status is failed, this field can contain the reason
     filamentUsedGrams: { type: Number, default: 0 }, // estimated filament used in grams
     estimatedTimeSeconds: { type: Number, default: 0 }, // estimated print time in seconds

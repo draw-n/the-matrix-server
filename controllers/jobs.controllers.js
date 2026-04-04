@@ -71,6 +71,11 @@ const createJob = async (req, res) => {
         const { filamentUsedGrams, estimatedTimeSeconds } =
             await extractGCodeMetadata(gcodeFilePath);
 
+        const maxOrderJob = await Job.findOne({
+            equipmentId: printer.uuid,
+        }).sort({ order: -1 });
+        const nextOrder = maxOrderJob ? maxOrderJob.order + 1 : 1;
+
         const job = new Job({
             _id: new ObjectId(),
             uuid: crypto.randomUUID(),
@@ -80,6 +85,7 @@ const createJob = async (req, res) => {
             estimatedTimeSeconds,
             gcodeFileName: gcodeFileName,
             status: "queued",
+            order: nextOrder,
         });
         await job.save();
         return res
@@ -117,7 +123,7 @@ const readyJob = async (req, res) => {
             const nextJob = await Job.findOne({
                 equipmentId: equipment.uuid,
                 status: "queued",
-            }).sort({ createdAt: 1 });
+            }).sort({ order: 1, createdAt: 1 });
 
             if (!nextJob) {
                 return res
@@ -130,6 +136,15 @@ const readyJob = async (req, res) => {
             nextJob.lastPrompt = "NONE";
             await nextJob.save();
             job = nextJob;
+
+            const updateOtherJobs = await Job.updateMany(
+                {
+                    equipmentId: equipment.uuid,
+                    status: "queued",
+                    order: { $gt: job.order },
+                },
+                { order: { $inc: -1 } },
+            );
         }
 
         // 3. PRE-PRINT FLOW: when job is READY, always require bed-check before starting
@@ -218,7 +233,7 @@ const readyJob = async (req, res) => {
                         );
                     }
                     await sendMacroToDuet(printerIp, "01_bed_clear.g");
-                     return res.status(200).json({
+                    return res.status(200).json({
                         jobFound: true,
                         message: "Bed check prompt resent",
                     });
@@ -350,10 +365,7 @@ const readyJob = async (req, res) => {
                                 e.message,
                             );
                         }
-                        await sendMacroToDuet(
-                            printerIp,
-                            "03_failure_reason.g",
-                        );
+                        await sendMacroToDuet(printerIp, "03_failure_reason.g");
                         return res.status(200).json({
                             jobFound: true,
                             message: "Failure reason prompt sent",
@@ -438,16 +450,32 @@ const preProcess = async (req, res) => {
             .json({ message: "GCODE file moved to staging.", gcode: true });
     }
 
-    // Normalized paths for comparison
-    const tempPath = path.resolve(req.file.path);
+    // after you've validated req.file and extracted fileExtension
+    const userFirst = (req.user?.firstName || "unknown")
+        .replace(/\s+/g, "_")
+        .replace(/[^a-zA-Z0-9_-]/g, "");
+    const userLast = (req.user?.lastName || "user")
+        .replace(/\s+/g, "_")
+        .replace(/[^a-zA-Z0-9_-]/g, "");
+    const origBase = path
+        .basename(req.file.originalname, path.extname(req.file.originalname))
+        .replace(/[^a-zA-Z0-9_-]/g, "");
+    const ext = path.extname(req.file.originalname);
+    const newFileName = `${origBase}-${userFirst}_${userLast}-${Date.now()}${ext}`;
     const destinationDir = path.resolve(process.env.MESH_INPUT_DIR || "meshes");
-    const destinationPath = path.resolve(destinationDir, req.file.originalname);
+    const destinationPath = path.resolve(destinationDir, newFileName);
+
+    // ensure dest dir exists then move
+    if (!fs.existsSync(destinationDir))
+        fs.mkdirSync(destinationDir, { recursive: true });
+    await fs.promises.rename(req.file.path, destinationPath);
+
 
     try {
         // 2. Run Analysis
         let pythonOutput;
         try {
-            pythonOutput = await detectMajorFacesPython(tempPath);
+            pythonOutput = await detectMajorFacesPython(destinationPath);
         } catch (err) {
             console.error("Critical python error:", err);
             throw err;
@@ -458,8 +486,8 @@ const preProcess = async (req, res) => {
             console.warn(`Validation Failed: ${pythonOutput.error_type}`);
 
             // Clean up: Only delete if it exists
-            if (fs.existsSync(tempPath)) {
-                fs.unlink(tempPath, (err) => {
+            if (fs.existsSync(destinationPath)) {
+                fs.unlink(destinationPath, (err) => {
                     if (err) console.error(err);
                 });
             }
@@ -471,23 +499,6 @@ const preProcess = async (req, res) => {
                 min_thickness: pythonOutput.min_thickness,
             });
         }
-
-        // --- FIXED MOVE LOGIC ---
-        // Only move if the paths are actually different
-        if (tempPath !== destinationPath) {
-            // Ensure directory exists
-            if (!fs.existsSync(destinationDir)) {
-                fs.mkdirSync(destinationDir, { recursive: true });
-            }
-
-            // Copy and Delete (Move)
-            await fs.promises.copyFile(tempPath, destinationPath);
-            await fs.promises.unlink(tempPath);
-            console.log(`File moved to staging: ${destinationPath}`);
-        } else {
-            console.log(`File already in staging: ${destinationPath}`);
-        }
-
         // 3. Standard Face Detection Logic
         const majorFaces = pythonOutput.faces;
 
@@ -520,13 +531,13 @@ const preProcess = async (req, res) => {
         return res.status(200).send({
             message: "File pre-processed successfully.",
             faces: result,
-            fileName: req.file.originalname,
+            fileName: newFileName,
         });
     } catch (err) {
         // Cleanup: Be careful not to delete the file if it was already in the destination
         // and the error happened unrelated to the file moving (though usually, we want to clean up on error)
-        if (fs.existsSync(tempPath)) {
-            fs.unlink(tempPath, (err) => {
+        if (fs.existsSync(destinationPath)) {
+            fs.unlink(destinationPath, (err) => {
                 if (err) console.error(err);
             });
         }
@@ -539,7 +550,13 @@ const preProcess = async (req, res) => {
     }
 };
 
-const deleteJob = async (req, res) => {
+/**
+ * deletes a job by its ID, only if it belongs to the authenticated user and is not currently printing
+ * @param {*} req - request details (with jobId in params)
+ * @param {*} res - response details
+ * @returns - response details (with status)
+ */
+const deleteJobById = async (req, res) => {
     const { jobId } = req.params;
     try {
         const job = await Job.findOneAndDelete({ uuid: jobId });
@@ -551,6 +568,34 @@ const deleteJob = async (req, res) => {
         console.error(err.message);
         return res.status(500).json({
             message: "Error when deleting job.",
+            error: err.message,
+        });
+    }
+};
+
+/**
+ * edits a job by its ID, only if it belongs to the authenticated user
+ * @param {*} req - request details (with jobId in params)
+ * @param {*} res - response details
+ * @returns - response details (with status)
+ */
+const editJobById = async (req, res) => {
+    const { jobId } = req.params;
+    const updateData = req.body;
+    try {
+        const job = await Job.findOneAndUpdate({ uuid: jobId }, updateData, {
+            new: true,
+        });
+        if (!job) {
+            return res.status(404).json({ message: "Job not found." });
+        }
+        return res
+            .status(200)
+            .json({ message: "Job updated successfully.", job });
+    } catch (err) {
+        console.error(err.message);
+        return res.status(500).json({
+            message: "Error when updating job.",
             error: err.message,
         });
     }
@@ -733,9 +778,10 @@ module.exports = {
     createJob,
     preProcess,
     readyJob,
-    deleteJob,
+    deleteJobById,
     getAllJobs,
     placeOnFace,
     getJobChartData,
     getFilamentUsedGrams,
+    editJobById,
 };
