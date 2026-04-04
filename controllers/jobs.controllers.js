@@ -26,6 +26,7 @@ const fs = require("fs");
 const Equipment = require("../models/Equipment.js");
 const Job = require("../models/Job.js");
 const crypto = require("crypto");
+const User = require("../models/User.js");
 const { ObjectId } = require("mongoose").Types;
 
 /**
@@ -38,12 +39,14 @@ const createJob = async (req, res) => {
     // request needs to contain filename, may have options
     const { fileName, material, options, userId } = req.body;
     try {
+
+        const user = req.user || await User.findOne({ uuid: userId });
         // after file upload
         const filePath = path.resolve(
             process.env.MESH_INPUT_DIR || "meshes",
             fileName,
         );
-        const gcodeFileName = fileName.replace(/\.[^/.]+$/, ".gcode");
+        const gcodeFileName = `${user.firstName}_${user.lastName}_${fileName.replace(/\.[^/.]+$/, ".gcode")}`;
         const gcodeFilePath = path.resolve(
             process.env.GCODE_OUTPUT_DIR || "gcodes",
             gcodeFileName,
