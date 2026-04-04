@@ -11,7 +11,8 @@ const {
     getFilamentUsedGrams,
     readyJob,
     deleteJobById,
-    editJobById
+    editJobById,
+    reprintJobById
 } = require("../controllers/jobs.controllers.js");
 const { ensureAuthenticated } = require("../middleware/auth.js");
 
@@ -38,6 +39,7 @@ router.post(
     preProcess,
 );
 router.post("/place-on-face", ensureAuthenticated, placeOnFace);
+router.post("/:jobId", ensureAuthenticated, reprintJobById);
 router.post("/", ensureAuthenticated, createJob);
 router.get("/", ensureAuthenticated, getAllJobs);
 router.get("/chart-data", ensureAuthenticated, getJobChartData);

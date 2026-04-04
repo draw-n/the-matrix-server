@@ -39,8 +39,18 @@ const createJob = async (req, res) => {
     // request needs to contain filename, may have options
     const { fileName, material, options, userId } = req.body;
     try {
+        const user = await User.findOne({ uuid: userId });
+        const existingJobs = await Job.find({
+            userId: user.uuid,
+            status: { $in: ["queued", "ready"] },
+        });
 
-        const user = req.user || await User.findOne({ uuid: userId });
+        if (user.access !== "admin" && existingJobs.length >= 3) {
+            return res.status(400).json({
+                message:
+                    "You have too many active jobs. Please wait for them to complete before uploading new ones.",
+            });
+        }
         // after file upload
         const filePath = path.resolve(
             process.env.MESH_INPUT_DIR || "meshes",
@@ -74,10 +84,8 @@ const createJob = async (req, res) => {
         const { filamentUsedGrams, estimatedTimeSeconds } =
             await extractGCodeMetadata(gcodeFilePath);
 
-        const maxOrderJob = await Job.findOne({
-            equipmentId: printer.uuid,
-        }).sort({ order: -1 });
-        const nextOrder = maxOrderJob ? maxOrderJob.order + 1 : 1;
+        const nextOrder =
+            (await Job.countDocuments({ equipmentId: printer.uuid })) + 1;
 
         const job = new Job({
             _id: new ObjectId(),
@@ -103,6 +111,76 @@ const createJob = async (req, res) => {
     }
 };
 
+/**
+ * Reprints a job based on its ID
+ * @param {*} req - request details
+ * @param {*} res - response details
+ * @returns - response details (with status)
+ */
+const reprintJobById = async (req, res) => {
+    const { jobId } = req.params;
+
+    try {
+        const user = await User.findOne({ uuid: req.user.uuid });
+        const existingJobs = await Job.find({
+            userId: user.uuid,
+            status: { $in: ["queued", "ready"] },
+        });
+
+        if (user.access !== "admin" && existingJobs.length >= 3) {
+            return res.status(400).json({
+                message:
+                    "You have too many active jobs. Please wait for them to complete before uploading new ones.",
+            });
+        }
+        if (!jobId) {
+            return res
+                .status(400)
+                .json({ message: "Missing jobId parameter." });
+        }
+        const job = await Job.findOne({ uuid: jobId });
+        if (!job) {
+            return res.status(404).json({ message: "Job not found." });
+        }
+        if (job.status !== "completed" && job.status !== "failed") {
+            return res.status(400).json({
+                message: "Only completed or failed jobs can be reprinted.",
+            });
+        }
+
+        const newJob = new Job({
+            ...job.toObject(),
+            _id: new ObjectId(),
+            uuid: crypto.randomUUID(),
+            status: "queued",
+            createdAt: new Date(),
+            uploadedAt: null,
+            finishedAt: null,
+            failureReason: "",
+            order:
+                (await Job.countDocuments({ equipmentId: job.equipmentId })) +
+                1,
+        });
+        await newJob.save();
+        return res.status(200).json({
+            message: "Job reprint created successfully.",
+            job: newJob,
+        });
+    } catch (err) {
+        console.error(err.message);
+        return res.status(500).json({
+            message: "Error when creating reprint job.",
+            error: err.message,
+        });
+    }
+};
+
+/**
+ * Handles the printer's request to check for ready jobs and manages the pre-print and post-print flows based on job status and UI sync values.
+ * @param {*} req -     request details (with printerIp in params and optional uiSyncValue in query)
+ * @param {*} res - response details
+ * @returns - response details (with status and jobFound boolean)
+ */
 const readyJob = async (req, res) => {
     try {
         const { printerIp } = req.params;
@@ -418,6 +496,19 @@ const readyJob = async (req, res) => {
  * @returns - response details (with status)
  */
 const preProcess = async (req, res) => {
+    const user = await User.findOne({ uuid: req.user.uuid });
+    const existingJobs = await Job.find({
+        userId: user.uuid,
+        status: { $in: ["queued", "ready"] },
+    });
+
+    if (user.access !== "admin" && existingJobs.length >= 3) {
+        return res.status(400).json({
+            message:
+                "You have too many active jobs. Please wait for them to complete before uploading new ones.",
+        });
+    }
+
     // 1. Validate Request
     if (!req.file) {
         return res.status(400).send({ message: "No file uploaded." });
@@ -516,7 +607,7 @@ const preProcess = async (req, res) => {
         return res.status(200).send({
             message: "File pre-processed successfully.",
             faces: result,
-            fileName: newFileName,
+            fileName: req.file.filename,
         });
     } catch (err) {
         // Cleanup: Be careful not to delete the file if it was already in the destination
@@ -764,6 +855,7 @@ module.exports = {
     preProcess,
     readyJob,
     deleteJobById,
+    reprintJobById,
     getAllJobs,
     placeOnFace,
     getJobChartData,
