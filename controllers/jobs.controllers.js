@@ -453,26 +453,8 @@ const preProcess = async (req, res) => {
             .json({ message: "GCODE file moved to staging.", gcode: true });
     }
 
-    // after you've validated req.file and extracted fileExtension
-    const userFirst = (req.user?.firstName || "unknown")
-        .replace(/\s+/g, "_")
-        .replace(/[^a-zA-Z0-9_-]/g, "");
-    const userLast = (req.user?.lastName || "user")
-        .replace(/\s+/g, "_")
-        .replace(/[^a-zA-Z0-9_-]/g, "");
-    const origBase = path
-        .basename(req.file.originalname, path.extname(req.file.originalname))
-        .replace(/[^a-zA-Z0-9_-]/g, "");
-    const ext = path.extname(req.file.originalname);
-    const newFileName = `${origBase}-${userFirst}_${userLast}-${Date.now()}${ext}`;
     const destinationDir = path.resolve(process.env.MESH_INPUT_DIR || "meshes");
-    const destinationPath = path.resolve(destinationDir, newFileName);
-
-    // ensure dest dir exists then move
-    if (!fs.existsSync(destinationDir))
-        fs.mkdirSync(destinationDir, { recursive: true });
-    await fs.promises.rename(req.file.path, destinationPath);
-
+    const destinationPath = path.resolve(destinationDir, req.file.filename);
 
     try {
         // 2. Run Analysis
