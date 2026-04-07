@@ -25,8 +25,7 @@ const storage = multer.diskStorage({
         if (!req.user || !req.user.firstName || !req.user.lastName) {
             return callback(new Error("User information is missing"));
         }
-        const user = `${req.user.firstName}_${req.user.lastName}`;
-        callback(null, `${user}_${file.originalname}`);
+        callback(null, file.originalname);
     },
 });
 
