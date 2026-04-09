@@ -18,7 +18,19 @@ const ensureAccess = (accesses) => {
     };
 };
 
+const ensureInternalRequest = (req, res, next) => {
+    const secret = req.headers["x-internal-key"];
+
+    if (!secret || secret !== process.env.PI_SECRET_KEY) {
+        console.warn(`Blocked unauthorized request to /internal`);
+        return res.status(403).json({ message: "Forbidden" });
+    }
+
+    return next();
+};
+
 module.exports = {
     ensureAuthenticated,
     ensureAccess,
+    ensureInternalRequest
 };
