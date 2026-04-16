@@ -82,7 +82,6 @@ const createEquipment = async (req, res) => {
                 }
             }
 
-            const file = req.file;
             const equipment = new Equipment({
                 _id: new ObjectId(),
                 uuid: crypto.randomUUID(),
@@ -95,7 +94,6 @@ const createEquipment = async (req, res) => {
                 cameraUrl,
                 remotePrintAvailable: remotePrintAvailable || false,
                 status: "available",
-                image: file? file.name: null,
                 piUrl,
                 key: (piUrl != null && remotePrintAvailable)? crypto.randomBytes(32).toString('hex'): null,
             });
@@ -138,12 +136,6 @@ const deleteEquipmentById = async (req, res) => {
                     .send({ message: "Equipment not found." });
             }
             const issues = await Issue.deleteMany({ equipment: uuid });
-            if (equipment.image) {
-                const imagePath = path.join("./files/images/equipments/", equipment.image);
-                if (fs.existsSync(imagePath)) {
-                    fs.unlinkSync(imagePath);
-                }
-            }
             return res
                 .status(200)
                 .send({ message: "Successfully deleted equipment." });
