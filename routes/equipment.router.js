@@ -9,6 +9,7 @@ const {
     getEquipmentById,
     getAllEquipment,
     updateStatusById,
+    pausePrinterById,
 } = require("../controllers/equipment.controllers.js");
 
 const storage = multer.diskStorage({
@@ -23,11 +24,17 @@ const storage = multer.diskStorage({
 
 const upload = multer({storage: storage});
 
-const { ensureAuthenticated } = require("../middleware/auth.js");
+const { ensureAuthenticated, ensureAccess } = require("../middleware/auth.js");
 
 router.post("/", ensureAuthenticated, upload.single("file"), createEquipment);
 router.put("/:uuid", ensureAuthenticated, upload.single("file"), editEquipmentById);
 router.get("/status/:uuid", ensureAuthenticated, updateStatusById);
+router.get(
+    "/pause/:uuid",
+    ensureAuthenticated,
+    ensureAccess(["admin", "moderator"]),
+    pausePrinterById,
+);
 router.get("/:uuid", ensureAuthenticated, getEquipmentById);
 router.get("/", ensureAuthenticated, getAllEquipment);
 router.delete("/:uuid", ensureAuthenticated, deleteEquipmentById);

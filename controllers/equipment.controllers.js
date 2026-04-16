@@ -4,6 +4,7 @@ var axios = require("axios");
 var mongoose = require("mongoose");
 const crypto = require("crypto");
 const { validateUniqueField } = require("../utils/mongo.utils.js");
+const { pausePrint } = require("../services/duet.service.js");
 const { ObjectId } = mongoose.Types; // Import ObjectId
 const multer = require("multer");
 const upload = multer({dest: "upload/equipments/"});
@@ -318,6 +319,43 @@ const updateStatusById = async (req, res) => {
 };
 
 /**
+ * Pause printer based on retrieval
+ * @param {*} req - request object
+ * @param {*} res - response object
+ * @returns - response object (with status)
+ */
+const pausePrinterById = async (req, res) => {
+    const uuid = req.params?.uuid;
+    try {
+        if (uuid) {
+            const equipment = await Equipment.findOne({ uuid: uuid });
+            if (!equipment) {
+                return res
+                    .status(404)
+                    .json({ message: "Equipment not found." });
+            }
+            if (!equipment.ipUrl) {
+                return res
+                    .status(400)
+                    .json({ message: "Equipment does not have IP URL." });
+            }
+            await pausePrint(equipment.ipUrl);
+            return res
+                .status(200)
+                .json({ message: "Printer paused successfully." });
+        } else {
+            return res.status(400).send({ message: "Missing Equipment ID." });
+        }
+    } catch (err) {
+        console.error(err.message);
+        return res.status(500).send({
+            message: "Error when pausing printer.",
+            error: err.message,
+        });
+    }
+};
+
+/**
  * Retrieves an equipment from MongoDB based on id.
  * @param {*} req - request details
  * @param {*} res - response details
@@ -383,4 +421,5 @@ module.exports = {
     getEquipmentById,
     getAllEquipment,
     updateStatusById,
+    pausePrinterById
 };

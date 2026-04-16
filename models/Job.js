@@ -35,16 +35,20 @@ const JobSchema = new Schema({
             "NONE",
             "SUCCESS_CHECK",
             "REPRINT_CHECK",
-            "FAILURE REASON",
+            "FAILURE_REASON",
             "BED_CLEAR_CHECK",
         ],
         default: "NONE",
     },
+    
+    order: { type: Number, required: true }, // order of the job in the queue for the equipment, only for jobs with status "queued"
     failureReason: { type: String, default: "" }, // if status is failed, this field can contain the reason
     filamentUsedGrams: { type: Number, default: 0 }, // estimated filament used in grams
     estimatedTimeSeconds: { type: Number, default: 0 }, // estimated print time in seconds
     createdAt: { type: Date, default: Date.now }, // date the job was created
-    updatedAt: { type: Date, default: Date.now }, // date the job was last updated
+    uploadedAt: { type: Date }, // date the G-code file was uploaded and job was marked ready
+    finishedAt: { type: Date }, // date the print completed or failed
+
 });
 
 module.exports = Job = mongoose.model("jobs", JobSchema);

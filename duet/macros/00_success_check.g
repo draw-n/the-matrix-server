@@ -2,7 +2,7 @@
 set global.ui_sync = 0
 
 ; Prompt for Success
-M291 P"Was the print successful?" R"Quality Check" S4 K{"YES","NO"}
+M291 P"If any parts fell or are missing, select NO." R"Was the print successful?" S4 K{"YES","NO"}
 
 if input == 0
     set global.ui_sync = 1 ; User chose YES

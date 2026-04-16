@@ -54,6 +54,15 @@ const startPrint = async (printerIp, fileName) => {
     return start.data;
 };
 
+const pausePrint = async (printerIp) => {
+    const response = await retryRequest(() =>
+        axios.get(`http://${printerIp}/rr_gcode`, {
+            params: { gcode: `M25` },
+        }),
+    );
+    return response.data;
+}
+
 /**
  * get printer status
  * @param {*} printerIp - ip address of the printer
@@ -111,4 +120,5 @@ module.exports = {
     getPrinterStatus,
     disconnectFromDuet,
     sendMacroToDuet,
+    pausePrint
 };

@@ -10,6 +10,9 @@ const {
     placeOnFace,
     getFilamentUsedGrams,
     readyJob,
+    deleteJobById,
+    editJobById,
+    reprintJobById
 } = require("../controllers/jobs.controllers.js");
 const { ensureAuthenticated } = require("../middleware/auth.js");
 
@@ -22,8 +25,7 @@ const storage = multer.diskStorage({
         if (!req.user || !req.user.firstName || !req.user.lastName) {
             return callback(new Error("User information is missing"));
         }
-        const user = `${req.user.firstName}_${req.user.lastName}`;
-        callback(null, `${user}_${file.originalname}`);
+        callback(null, file.originalname);
     },
 });
 
@@ -36,12 +38,14 @@ router.post(
     preProcess,
 );
 router.post("/place-on-face", ensureAuthenticated, placeOnFace);
-
+router.post("/:jobId", ensureAuthenticated, reprintJobById);
 router.post("/", ensureAuthenticated, createJob);
 router.get("/", ensureAuthenticated, getAllJobs);
 router.get("/chart-data", ensureAuthenticated, getJobChartData);
 router.get("/filament-usage", ensureAuthenticated, getFilamentUsedGrams);
 // endpoints for printer to check for jobs, no authentication
 router.get("/:printerIp/ready", readyJob);
+router.put("/:jobId", ensureAuthenticated, editJobById);
+router.delete("/:jobId", ensureAuthenticated, deleteJobById);
 
 module.exports = router;
