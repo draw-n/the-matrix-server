@@ -5,6 +5,8 @@ var mongoose = require("mongoose");
 const crypto = require("crypto");
 const { validateUniqueField } = require("../utils/mongo.utils.js");
 const { ObjectId } = mongoose.Types; // Import ObjectId
+const multer = require("multer");
+const upload = multer({dest: "upload/equipments/"});
 
 /**
  * Creates new equipment and saves to MongoDB.
@@ -22,6 +24,7 @@ const createEquipment = async (req, res) => {
         headline,
         cameraUrl,
         remotePrintAvailable,
+        piUrl
     } = req.body;
 
     try {
@@ -64,6 +67,21 @@ const createEquipment = async (req, res) => {
                         .send({ message: "Route Path must be unique." });
                 }
             }
+
+            if(piUrl){
+                const isUnique = await validateUniqueField(
+                    piUrl,
+                    "piUrl",
+                    Equipment,
+                );
+                if (!isUnique) {
+                    return res
+                        .status(400)
+                        .send({ message: "Route Path must be unique." });
+                }
+            }
+
+            const file = req.file;
             const equipment = new Equipment({
                 _id: new ObjectId(),
                 uuid: crypto.randomUUID(),
@@ -76,6 +94,9 @@ const createEquipment = async (req, res) => {
                 cameraUrl,
                 remotePrintAvailable: remotePrintAvailable || false,
                 status: "available",
+                image: file? file.name: null,
+                piUrl,
+                key: (piUrl != null && remotePrintAvailable)? crypto.randomBytes(32).toString('hex'): null,
             });
             await equipment.save();
 
@@ -116,6 +137,12 @@ const deleteEquipmentById = async (req, res) => {
                     .send({ message: "Equipment not found." });
             }
             const issues = await Issue.deleteMany({ equipment: uuid });
+            if (equipment.image) {
+                const imagePath = path.join("./files/images/equipments/", equipment.image);
+                if (fs.existsSync(imagePath)) {
+                    fs.unlinkSync(imagePath);
+                }
+            }
             return res
                 .status(200)
                 .send({ message: "Successfully deleted equipment." });

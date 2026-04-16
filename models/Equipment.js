@@ -43,6 +43,15 @@ const EquipmentSchema = new Schema({
         type: String,
         required: true,
     },
+    image: {
+        type: String,
+    },
+    key: {
+        type: String,
+    },
+    piUrl: {
+        type: String,
+    }
 });
 
 EquipmentSchema.pre("save", function (next) {
