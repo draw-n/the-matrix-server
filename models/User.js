@@ -62,6 +62,18 @@ const UserSchema = new Schema({
     departments: {
         type: [String], // if faculty, department, if student, major(s) and minors
     },
+    officeHours: { // only for faculty/TAs
+        type: [
+            {
+                dayOfWeek: {
+                    type: String,
+                    enum: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+                },
+                startTime: String, // in HH:mm format
+                endTime: String, // in HH:mm format
+            }
+        ]
+    }
 });
 
 UserSchema.pre("save", async function (next) {
