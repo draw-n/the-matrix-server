@@ -45,12 +45,6 @@ const EquipmentSchema = new Schema({
     },
     image: {
         type: String,
-    },
-    key: {
-        type: String,
-    },
-    piUrl: {
-        type: String,
     }
 });
 

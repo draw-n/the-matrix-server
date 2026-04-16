@@ -24,8 +24,7 @@ const createEquipment = async (req, res) => {
         ipUrl,
         headline,
         cameraUrl,
-        remotePrintAvailable,
-        piUrl
+        remotePrintAvailable
     } = req.body;
 
     try {
@@ -69,19 +68,6 @@ const createEquipment = async (req, res) => {
                 }
             }
 
-            if(piUrl){
-                const isUnique = await validateUniqueField(
-                    piUrl,
-                    "piUrl",
-                    Equipment,
-                );
-                if (!isUnique) {
-                    return res
-                        .status(400)
-                        .send({ message: "Route Path must be unique." });
-                }
-            }
-
             const file = req.file;
             const equipment = new Equipment({
                 _id: new ObjectId(),
@@ -95,9 +81,7 @@ const createEquipment = async (req, res) => {
                 cameraUrl,
                 remotePrintAvailable: remotePrintAvailable || false,
                 status: "available",
-                image: file? file.name: null,
-                piUrl,
-                key: (piUrl != null && remotePrintAvailable)? crypto.randomBytes(32).toString('hex'): null,
+                image: file? file.name: null
             });
             await equipment.save();
 

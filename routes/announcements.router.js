@@ -31,10 +31,6 @@ const upload = multer({ storage: storage });
 
 const { ensureAuthenticated, ensureInternalRequest } = require("../middleware/auth.js");
 
-//unauthenticated post route for pi
-router.post("/internal", ensureInternalRequest, createAnnouncement);
-router.delete("/internal/:uuid", ensureInternalRequest, deleteAnnouncementById);
-
 router.post(
     "/",
     ensureAuthenticated,
