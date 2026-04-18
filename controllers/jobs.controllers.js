@@ -158,7 +158,7 @@ const reprintJobById = async (req, res) => {
             finishedAt: null,
             failureReason: "",
             order:
-                (await Job.countDocuments({ equipmentId: job.equipmentId })) +
+                (await Job.countDocuments({ equipmentId: job.equipmentId, status: "queued" })) +
                 1,
         });
         await newJob.save();
@@ -224,7 +224,7 @@ const readyJob = async (req, res) => {
                     status: "queued",
                     order: { $gt: job.order },
                 },
-                { order: { $inc: -1 } },
+                { $inc: { order: -1 } },
             );
         }
 
