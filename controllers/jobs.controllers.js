@@ -186,9 +186,6 @@ const readyJob = async (req, res) => {
         const { printerIp } = req.params;
         const { uiSyncValue = 0 } = req.query;
 
-        // Note: avoid connecting here; connect only when we need to interact
-        // with the printer (sending macros, uploading gcode, starting prints).
-
         const equipment = await Equipment.findOne({ ipUrl: printerIp });
         if (!equipment)
             return res.status(404).json({ message: "Equipment not found." });
@@ -433,11 +430,7 @@ const readyJob = async (req, res) => {
                     break;
 
                 case "FAILURE_REASON":
-                    if (Number(uiSyncValue) === 1) {
-                        job.failureReason = "UNPRINTABLE_BAD_FILE";
-                    } else if (Number(uiSyncValue) === 2) {
-                        job.failureReason = "BAD_ORIENTATION";
-                    } else if (Number(uiSyncValue) === 0) {
+                    if (uiSyncValue === "0" || Number(uiSyncValue) === 0) {
                         try {
                             await connectToDuet(printerIp);
                         } catch (e) {
@@ -451,8 +444,9 @@ const readyJob = async (req, res) => {
                             jobFound: true,
                             message: "Failure reason prompt sent",
                         });
+                    } else {
+                        job.failureReason = uiSyncValue;
                     }
-                    // UI should send the chosen reason in uiSyncValue (or body), accept it and mark failed
                     job.status = "failed";
                     job.finishedAt = new Date();
 
