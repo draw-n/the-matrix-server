@@ -6,6 +6,8 @@ const crypto = require("crypto");
 const { validateUniqueField } = require("../utils/mongo.utils.js");
 const { pausePrint } = require("../services/duet.service.js");
 const { ObjectId } = mongoose.Types; // Import ObjectId
+const multer = require("multer");
+const upload = multer({dest: "upload/equipments/"});
 
 /**
  * Creates new equipment and saves to MongoDB.
@@ -23,6 +25,7 @@ const createEquipment = async (req, res) => {
         headline,
         cameraUrl,
         remotePrintAvailable,
+        piUrl
     } = req.body;
 
     try {
@@ -65,6 +68,20 @@ const createEquipment = async (req, res) => {
                         .send({ message: "Route Path must be unique." });
                 }
             }
+
+            if(piUrl){
+                const isUnique = await validateUniqueField(
+                    piUrl,
+                    "piUrl",
+                    Equipment,
+                );
+                if (!isUnique) {
+                    return res
+                        .status(400)
+                        .send({ message: "Route Path must be unique." });
+                }
+            }
+
             const equipment = new Equipment({
                 _id: new ObjectId(),
                 uuid: crypto.randomUUID(),
@@ -77,6 +94,8 @@ const createEquipment = async (req, res) => {
                 cameraUrl,
                 remotePrintAvailable: remotePrintAvailable || false,
                 status: "available",
+                piUrl,
+                key: (piUrl != null && remotePrintAvailable)? crypto.randomBytes(32).toString('hex'): null,
             });
             await equipment.save();
 
